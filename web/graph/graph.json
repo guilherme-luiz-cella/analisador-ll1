@@ -1,0 +1,3057 @@
+{
+ "module": "analisador-ll1",
+ "nodes": [
+  {
+   "id": "file:cmd/analisador/console_other.go",
+   "label": "console_other.go",
+   "kind": "file",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/console_other.go",
+   "line": 1,
+   "signature": "import os"
+  },
+  {
+   "id": "file:cmd/analisador/console_windows.go",
+   "label": "console_windows.go",
+   "kind": "file",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/console_windows.go",
+   "line": 1,
+   "signature": "import os, syscall, unsafe"
+  },
+  {
+   "id": "file:cmd/analisador/main.go",
+   "label": "main.go",
+   "kind": "file",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 1,
+   "signature": "import bufio, fmt, io, math/rand, os, strconv, strings, time, analisador-ll1/ll1"
+  },
+  {
+   "id": "file:cmd/analisador/render.go",
+   "label": "render.go",
+   "kind": "file",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/render.go",
+   "line": 1,
+   "signature": "import strings, unicode/utf8"
+  },
+  {
+   "id": "file:cmd/codegraph/main.go",
+   "label": "main.go",
+   "kind": "file",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 1,
+   "signature": "import bytes, encoding/json, flag, fmt, go/ast, go/parser, go/printer, go/token, io/fs, os, path, path/filepath, sort, strings"
+  },
+  {
+   "id": "file:cmd/wasm/main.go",
+   "label": "main.go",
+   "kind": "file",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 1,
+   "signature": "import encoding/json, math/rand, strings, syscall/js, time, analisador-ll1/ll1"
+  },
+  {
+   "id": "file:ll1/generator.go",
+   "label": "generator.go",
+   "kind": "file",
+   "package": "ll1",
+   "file": "ll1/generator.go",
+   "line": 1,
+   "signature": "import math, math/rand, strconv, strings"
+  },
+  {
+   "id": "file:ll1/grammar.go",
+   "label": "grammar.go",
+   "kind": "file",
+   "package": "ll1",
+   "file": "ll1/grammar.go",
+   "line": 1,
+   "signature": "import strings"
+  },
+  {
+   "id": "file:ll1/lexer.go",
+   "label": "lexer.go",
+   "kind": "file",
+   "package": "ll1",
+   "file": "ll1/lexer.go",
+   "line": 1,
+   "signature": "import fmt"
+  },
+  {
+   "id": "file:ll1/parser.go",
+   "label": "parser.go",
+   "kind": "file",
+   "package": "ll1",
+   "file": "ll1/parser.go",
+   "line": 1,
+   "signature": "import fmt"
+  },
+  {
+   "id": "file:ll1/sets.go",
+   "label": "sets.go",
+   "kind": "file",
+   "package": "ll1",
+   "file": "ll1/sets.go",
+   "line": 1
+  },
+  {
+   "id": "file:ll1/table.go",
+   "label": "table.go",
+   "kind": "file",
+   "package": "ll1",
+   "file": "ll1/table.go",
+   "line": 1,
+   "signature": "import fmt"
+  },
+  {
+   "id": "func:cmd/analisador.app.analyze",
+   "label": "app.analyze",
+   "kind": "method",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 181,
+   "doc": "analyze parses the sentence and prints its tokens, trace and result.",
+   "signature": "func (a *app) analyze(sentence string)",
+   "code": "func (a *app) analyze(sentence string) {\n\ta.print(fmt.Sprintf(\"Sentença: %s\\n\\n\", a.colors.paint(styleBold, sentence)))\n\tresult := ll1.Parse(a.table, sentence)\n\n\ta.print(\"Tokens:\\n\")\n\tvar tokenRows [][]string\n\tfor _, token := range result.Tokens {\n\t\ttokenRows = append(tokenRows, []string{token.Kind, token.Lexeme, strconv.Itoa(token.Pos)})\n\t}\n\tif len(tokenRows) == 0 {\n\t\ta.print(\"  (nenhum token reconhecido)\\n\")\n\t} else {\n\t\ta.print(table(a.colors, []string{\"Token\", \"Lexema\", \"Posição\"}, tokenRows, nil))\n\t}\n\n\ta.print(\"\\nPassos da análise (topo da pilha à direita):\\n\")\n\tconst actionColumn = 3\n\tvar stepRows [][]string\n\tfor _, step := range result.Steps {\n\t\tstepRows = append(stepRows, []string{\n\t\t\tstrconv.Itoa(step.Number),\n\t\t\tstrings.Join(step.Stack, \" \"),\n\t\t\tstrings.Join(step.Input, \" \"),\n\t\t\tstep.Action,\n\t\t})\n\t}\n\ta.print(table(a.colors, []string{\"Passo\", \"Pilha\", \"Entrada\", \"Ação\"}, stepRows,\n\t\tfunc(_, column int, text string) string {\n\t\t\tswitch {\n\t\t\tcase column != actionColumn:\n\t\t\t\treturn \"\"\n\t\t\tcase text == ll1.ActionAccept:\n\t\t\t\treturn styleGood\n\t\t\tcase strings.HasPrefix(text, ll1.ErrorPrefix):\n\t\t\t\treturn styleBad\n\t\t\t}\n\t\t\treturn \"\"\n\t\t}))\n\n\tstyle := styleBad\n// … (+5 linhas)"
+  },
+  {
+   "id": "func:cmd/analisador.app.generateInvalid",
+   "label": "app.generateInvalid",
+   "kind": "method",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 174,
+   "signature": "func (a *app) generateInvalid() bool",
+   "code": "func (a *app) generateInvalid() bool {\n\ta.section(\"GERAR SENTENÇA INVÁLIDA\")\n\ta.analyze(ll1.GenerateInvalid(a.grammar, a.rng))\n\treturn true\n}"
+  },
+  {
+   "id": "func:cmd/analisador.app.generateValid",
+   "label": "app.generateValid",
+   "kind": "method",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 168,
+   "signature": "func (a *app) generateValid() bool",
+   "code": "func (a *app) generateValid() bool {\n\ta.section(\"GERAR SENTENÇA VÁLIDA\")\n\ta.analyze(ll1.Generate(a.grammar, a.rng, generatedMaxDepth))\n\treturn true\n}"
+  },
+  {
+   "id": "func:cmd/analisador.app.print",
+   "label": "app.print",
+   "kind": "method",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 254,
+   "signature": "func (a *app) print(text string)",
+   "code": "func (a *app) print(text string) {\n\tfmt.Fprint(a.out, text)\n}"
+  },
+  {
+   "id": "func:cmd/analisador.app.printMenu",
+   "label": "app.printMenu",
+   "kind": "method",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 102,
+   "signature": "func (a *app) printMenu()",
+   "code": "func (a *app) printMenu() {\n\ta.print(\"\\n\" + a.colors.paint(styleTitle, \"MENU\") + \"\\n\")\n\tfor _, option := range menu {\n\t\ta.print(fmt.Sprintf(\"  %s  %s\\n\", a.colors.paint(styleBold, option.key), option.label))\n\t}\n\ta.print(fmt.Sprintf(\"  %s  %s\\n\\n\", a.colors.paint(styleBold, exitKey), \"Sair\"))\n}"
+  },
+  {
+   "id": "func:cmd/analisador.app.productionList",
+   "label": "app.productionList",
+   "kind": "method",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 227,
+   "signature": "func (a *app) productionList() string",
+   "code": "func (a *app) productionList() string {\n\tvar sb strings.Builder\n\tfor _, p := range a.grammar.Productions {\n\t\tsb.WriteString(fmt.Sprintf(\"  %2d. %s\\n\", p.Number, p))\n\t}\n\treturn sb.String()\n}"
+  },
+  {
+   "id": "func:cmd/analisador.app.readLine",
+   "label": "app.readLine",
+   "kind": "method",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 245,
+   "doc": "readLine prompts and returns the next input line, or false at end of input.",
+   "signature": "func (a *app) readLine(prompt string) (string, bool)",
+   "code": "func (a *app) readLine(prompt string) (string, bool) {\n\ta.print(prompt)\n\tif !a.in.Scan() {\n\t\treturn \"\", false\n\t}\n\t// Keep inner and leading spaces so token positions match what was typed.\n\treturn strings.TrimRight(a.in.Text(), \"\\r\"), true\n}"
+  },
+  {
+   "id": "func:cmd/analisador.app.section",
+   "label": "app.section",
+   "kind": "method",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 235,
+   "signature": "func (a *app) section(title string)",
+   "code": "func (a *app) section(title string) {\n\ta.print(\"\\n\" + box(a.colors, title) + \"\\n\")\n}"
+  },
+  {
+   "id": "func:cmd/analisador.app.showGrammar",
+   "label": "app.showGrammar",
+   "kind": "method",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 110,
+   "signature": "func (a *app) showGrammar() bool",
+   "code": "func (a *app) showGrammar() bool {\n\ta.section(\"GRAMÁTICA\")\n\ta.print(a.grammar.String())\n\ta.print(fmt.Sprintf(\"\\nSímbolo inicial: %s\\n\", a.grammar.Start))\n\ta.print(fmt.Sprintf(\"Não terminais:   %s\\n\", strings.Join(a.grammar.NonTerminals, \" \")))\n\ta.print(fmt.Sprintf(\"Terminais:       %s (fim da entrada: %s)\\n\\n\", strings.Join(a.grammar.Terminals, \" \"), ll1.EndMarker))\n\ta.print(\"Produções numeradas (os números aparecem na tabela de parsing):\\n\")\n\ta.print(a.productionList())\n\treturn true\n}"
+  },
+  {
+   "id": "func:cmd/analisador.app.showSets",
+   "label": "app.showSets",
+   "kind": "method",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 121,
+   "signature": "func (a *app) showSets() bool",
+   "code": "func (a *app) showSets() bool {\n\ta.section(\"CONJUNTOS FIRST E FOLLOW\")\n\tfirst, follow := a.grammar.First(), a.grammar.Follow()\n\tvar rows [][]string\n\tfor _, nt := range a.grammar.NonTerminals {\n\t\trows = append(rows, []string{nt, setText(first[nt]), setText(follow[nt])})\n\t}\n\ta.print(table(a.colors, []string{\"Não terminal\", \"FIRST\", \"FOLLOW\"}, rows, nil))\n\treturn true\n}"
+  },
+  {
+   "id": "func:cmd/analisador.app.showTable",
+   "label": "app.showTable",
+   "kind": "method",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 132,
+   "signature": "func (a *app) showTable() bool",
+   "code": "func (a *app) showTable() bool {\n\ta.section(\"TABELA DE PARSING LL(1)\")\n\theaders := append([]string{\"M\"}, a.table.Columns...)\n\tvar rows [][]string\n\tfor _, nt := range a.grammar.NonTerminals {\n\t\trow := []string{nt}\n\t\tfor _, column := range a.table.Columns {\n\t\t\tcell := emptyCell\n\t\t\tif number, ok := a.table.Cells[nt][column]; ok {\n\t\t\t\tcell = strconv.Itoa(number)\n\t\t\t}\n\t\t\trow = append(row, cell)\n\t\t}\n\t\trows = append(rows, row)\n\t}\n\ta.print(table(a.colors, headers, rows, nil))\n\ta.print(\"Células vazias indicam erro sintático.\\n\")\n\tif len(a.table.Conflicts) == 0 {\n\t\ta.print(\"Nenhum conflito: a gramática é LL(1).\\n\\n\")\n\t} else {\n\t\ta.print(a.colors.paint(styleBad, strings.Join(a.table.Conflicts, \"\\n\")) + \"\\n\\n\")\n\t}\n\ta.print(a.productionList())\n\treturn true\n}"
+  },
+  {
+   "id": "func:cmd/analisador.app.typeSentence",
+   "label": "app.typeSentence",
+   "kind": "method",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 158,
+   "signature": "func (a *app) typeSentence() bool",
+   "code": "func (a *app) typeSentence() bool {\n\ta.section(\"DIGITAR SENTENÇA\")\n\tsentence, ok := a.readLine(\"Digite a sentença: \")\n\tif !ok {\n\t\treturn false\n\t}\n\ta.analyze(sentence)\n\treturn true\n}"
+  },
+  {
+   "id": "func:cmd/analisador.app.waitForEnter",
+   "label": "app.waitForEnter",
+   "kind": "method",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 239,
+   "signature": "func (a *app) waitForEnter() bool",
+   "code": "func (a *app) waitForEnter() bool {\n\t_, ok := a.readLine(\"\\n\" + a.colors.paint(styleDim, \"Pressione Enter para voltar ao menu\"))\n\treturn ok\n}"
+  },
+  {
+   "id": "func:cmd/analisador.box",
+   "label": "box",
+   "kind": "func",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/render.go",
+   "line": 31,
+   "doc": "box draws a double-line frame around the lines.",
+   "signature": "func box(p palette, lines ...string) string",
+   "code": "func box(p palette, lines ...string) string {\n\twidth := 0\n\tfor _, line := range lines {\n\t\twidth = max(width, utf8.RuneCountInString(line))\n\t}\n\tvar sb strings.Builder\n\tsb.WriteString(\"╔\" + strings.Repeat(\"═\", width+4) + \"╗\\n\")\n\tfor _, line := range lines {\n\t\tsb.WriteString(\"║  \" + p.paint(styleTitle, pad(line, width)) + \"  ║\\n\")\n\t}\n\tsb.WriteString(\"╚\" + strings.Repeat(\"═\", width+4) + \"╝\\n\")\n\treturn sb.String()\n}"
+  },
+  {
+   "id": "func:cmd/analisador.findOption",
+   "label": "findOption",
+   "kind": "func",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 93,
+   "signature": "func findOption(key string) (menuOption, bool)",
+   "code": "func findOption(key string) (menuOption, bool) {\n\tfor _, option := range menu {\n\t\tif option.key == key {\n\t\t\treturn option, true\n\t\t}\n\t}\n\treturn menuOption{}, false\n}"
+  },
+  {
+   "id": "func:cmd/analisador.main",
+   "label": "main",
+   "kind": "func",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 53,
+   "signature": "func main()",
+   "code": "func main() {\n\tcolors := os.Getenv(\"NO_COLOR\") == \"\" \u0026\u0026 prepareConsole()\n\trng := rand.New(rand.NewSource(time.Now().UnixNano()))\n\trun(os.Stdin, os.Stdout, colors, rng)\n}"
+  },
+  {
+   "id": "func:cmd/analisador.pad",
+   "label": "pad",
+   "kind": "func",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/render.go",
+   "line": 91,
+   "signature": "func pad(text string, width int) string",
+   "code": "func pad(text string, width int) string {\n\treturn text + strings.Repeat(\" \", width-utf8.RuneCountInString(text))\n}"
+  },
+  {
+   "id": "func:cmd/analisador.palette.paint",
+   "label": "palette.paint",
+   "kind": "method",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/render.go",
+   "line": 23,
+   "signature": "func (p palette) paint(style, text string) string",
+   "code": "func (p palette) paint(style, text string) string {\n\tif !p.enabled || text == \"\" {\n\t\treturn text\n\t}\n\treturn style + text + styleReset\n}"
+  },
+  {
+   "id": "func:cmd/analisador.prepareConsole",
+   "label": "prepareConsole",
+   "kind": "func",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/console_other.go",
+   "line": 8,
+   "doc": "prepareConsole reports whether stdout is a terminal that can show colors.",
+   "signature": "func prepareConsole() bool",
+   "code": "func prepareConsole() bool {\n\tinfo, err := os.Stdout.Stat()\n\treturn err == nil \u0026\u0026 info.Mode()\u0026os.ModeCharDevice != 0\n}"
+  },
+  {
+   "id": "func:cmd/analisador.prepareConsole:20",
+   "label": "prepareConsole",
+   "kind": "func",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/console_windows.go",
+   "line": 20,
+   "doc": "prepareConsole turns on ANSI escape handling in the Windows console. It reports whether colors can be used: false when stdout is not a console (for example, piped) or the mode can't be set.",
+   "signature": "func prepareConsole() bool",
+   "code": "func prepareConsole() bool {\n\thandle := os.Stdout.Fd()\n\tvar mode uint32\n\tif ok, _, _ := procGetConsoleMode.Call(handle, uintptr(unsafe.Pointer(\u0026mode))); ok == 0 {\n\t\treturn false\n\t}\n\tok, _, _ := procSetConsoleMode.Call(handle, uintptr(mode|enableVirtualTerminalProcessing))\n\treturn ok != 0\n}"
+  },
+  {
+   "id": "func:cmd/analisador.run",
+   "label": "run",
+   "kind": "func",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 60,
+   "doc": "run shows the menu until the user picks 0 or the input ends.",
+   "signature": "func run(in io.Reader, out io.Writer, colors bool, rng *rand.Rand)",
+   "code": "func run(in io.Reader, out io.Writer, colors bool, rng *rand.Rand) {\n\tgrammar := ll1.Default()\n\ta := \u0026app{\n\t\tgrammar: grammar,\n\t\ttable:   ll1.BuildTable(grammar),\n\t\trng:     rng,\n\t\tin:      bufio.NewScanner(in),\n\t\tout:     out,\n\t\tcolors:  palette{enabled: colors},\n\t}\n\ta.print(box(a.colors,\n\t\t\"ANALISADOR SINTÁTICO LL(1)\",\n\t\t\"Preditivo tabular (não recursivo)\"))\n\tfor {\n\t\ta.printMenu()\n\t\tchoice, ok := a.readLine(\"Escolha uma opção: \")\n\t\tchoice = strings.TrimSpace(choice)\n\t\tif !ok || choice == exitKey {\n\t\t\ta.print(\"\\nAté logo!\\n\")\n\t\t\treturn\n\t\t}\n\t\toption, found := findOption(choice)\n\t\tif !found {\n\t\t\ta.print(a.colors.paint(styleBad, \"Opção inválida.\") + \"\\n\")\n\t\t\tcontinue\n\t\t}\n\t\tif !option.action(a) || !a.waitForEnter() {\n\t\t\ta.print(\"\\nAté logo!\\n\")\n\t\t\treturn\n\t\t}\n\t}\n}"
+  },
+  {
+   "id": "func:cmd/analisador.setText",
+   "label": "setText",
+   "kind": "func",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 258,
+   "signature": "func setText(symbols []string) string",
+   "code": "func setText(symbols []string) string {\n\treturn \"{ \" + strings.Join(symbols, \", \") + \" }\"\n}"
+  },
+  {
+   "id": "func:cmd/analisador.table",
+   "label": "table",
+   "kind": "func",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/render.go",
+   "line": 50,
+   "doc": "table draws an aligned grid with a header row. Styles are applied after padding so escape codes never break the alignment.",
+   "signature": "func table(p palette, headers []string, rows [][]string, style cellStyle) string",
+   "code": "func table(p palette, headers []string, rows [][]string, style cellStyle) string {\n\twidths := make([]int, len(headers))\n\tfor i, h := range headers {\n\t\twidths[i] = utf8.RuneCountInString(h)\n\t}\n\tfor _, row := range rows {\n\t\tfor i, cell := range row {\n\t\t\twidths[i] = max(widths[i], utf8.RuneCountInString(cell))\n\t\t}\n\t}\n\tborder := func(left, middle, right string) string {\n\t\tparts := make([]string, len(widths))\n\t\tfor i, w := range widths {\n\t\t\tparts[i] = strings.Repeat(\"─\", w+2)\n\t\t}\n\t\treturn left + strings.Join(parts, middle) + right + \"\\n\"\n\t}\n\tline := func(cells []string, paint func(column int, text string) string) string {\n\t\tparts := make([]string, len(widths))\n\t\tfor i, w := range widths {\n\t\t\tparts[i] = \" \" + paint(i, pad(cells[i], w)) + \" \"\n\t\t}\n\t\treturn \"│\" + strings.Join(parts, \"│\") + \"│\\n\"\n\t}\n\n\tvar sb strings.Builder\n\tsb.WriteString(border(\"┌\", \"┬\", \"┐\"))\n\tsb.WriteString(line(headers, func(_ int, text string) string { return p.paint(styleBold, text) }))\n\tsb.WriteString(border(\"├\", \"┼\", \"┤\"))\n\tfor r, row := range rows {\n\t\tsb.WriteString(line(row, func(column int, text string) string {\n\t\t\tif style == nil {\n\t\t\t\treturn text\n\t\t\t}\n\t\t\treturn p.paint(style(r, column, row[column]), text)\n\t\t}))\n\t}\n\tsb.WriteString(border(\"└\", \"┴\", \"┘\"))\n\treturn sb.String()\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.buildGraph",
+   "label": "buildGraph",
+   "kind": "func",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 128,
+   "signature": "func buildGraph(root string) (*Graph, error)",
+   "code": "func buildGraph(root string) (*Graph, error) {\n\tmodule, err := readModulePath(filepath.Join(root, \"go.mod\"))\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\tb := \u0026builder{\n\t\tmodule:        module,\n\t\tfset:          token.NewFileSet(),\n\t\tnodes:         map[string]*Node{},\n\t\tedges:         map[Edge]bool{},\n\t\tfuncsByDir:    map[string]map[string]string{},\n\t\tmethodsByName: map[string][]string{},\n\t\tdeclIDs:       map[*ast.FuncDecl]string{},\n\t\tsources:       map[string][]string{},\n\t}\n\tif err := b.parseTree(root); err != nil {\n\t\treturn nil, err\n\t}\n\tb.declare()\n\tb.link()\n\treturn b.result(), nil\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.builder.addEdge",
+   "label": "builder.addEdge",
+   "kind": "method",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 217,
+   "signature": "func (b *builder) addEdge(from, to, kind string)",
+   "code": "func (b *builder) addEdge(from, to, kind string) {\n\tif from != \"\" \u0026\u0026 to != \"\" \u0026\u0026 from != to {\n\t\tb.edges[Edge{From: from, To: to, Kind: kind}] = true\n\t}\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.builder.collectCalls",
+   "label": "builder.collectCalls",
+   "kind": "method",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 430,
+   "signature": "func (b *builder) collectCalls(pf *parsedFile, caller string, body *ast.BlockStmt)",
+   "code": "func (b *builder) collectCalls(pf *parsedFile, caller string, body *ast.BlockStmt) {\n\t// Selector names and struct-literal keys look like identifiers but are not references.\n\tskipIdents := map[*ast.Ident]bool{}\n\tast.Inspect(body, func(n ast.Node) bool {\n\t\tswitch x := n.(type) {\n\t\tcase *ast.SelectorExpr:\n\t\t\tskipIdents[x.Sel] = true\n\t\tcase *ast.KeyValueExpr:\n\t\t\tif key, ok := x.Key.(*ast.Ident); ok {\n\t\t\t\tskipIdents[key] = true\n\t\t\t}\n\t\t}\n\t\treturn true\n\t})\n\n\tast.Inspect(body, func(n ast.Node) bool {\n\t\tswitch x := n.(type) {\n\t\tcase *ast.CallExpr:\n\t\t\tif sel, ok := x.Fun.(*ast.SelectorExpr); ok {\n\t\t\t\tb.addEdge(caller, b.resolveSelector(pf, sel), edgeCalls)\n\t\t\t}\n\t\tcase *ast.Ident:\n\t\t\t// Covers direct calls and functions passed as values; Obj is set for locals.\n\t\t\tif !skipIdents[x] \u0026\u0026 (x.Obj == nil || x.Obj.Kind == ast.Fun) {\n\t\t\t\tb.addEdge(caller, b.funcsByDir[pf.dir][x.Name], edgeCalls)\n\t\t\t}\n\t\t}\n\t\treturn true\n\t})\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.builder.declare",
+   "label": "builder.declare",
+   "kind": "method",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 224,
+   "doc": "declare creates every node and the structural edges (pass one).",
+   "signature": "func (b *builder) declare()",
+   "code": "func (b *builder) declare() {\n\tfor _, pf := range b.files {\n\t\tpkgID := packageID(pf.dir)\n\t\tpkg := b.nodes[pkgID]\n\t\tif pkg == nil {\n\t\t\tpkg = \u0026Node{ID: pkgID, Label: b.packageLabel(pf.dir), Kind: kindPackage, Package: pf.dir,\n\t\t\t\tSignature: \"package \" + pf.file.Name.Name}\n\t\t\tb.nodes[pkgID] = pkg\n\t\t}\n\t\tif pkg.Doc == \"\" {\n\t\t\tpkg.Doc = firstParagraph(pf.file.Doc)\n\t\t}\n\n\t\tfileID := \"file:\" + pf.rel\n\t\tb.nodes[fileID] = \u0026Node{ID: fileID, Label: path.Base(pf.rel), Kind: kindFile, Package: pf.dir,\n\t\t\tFile: pf.rel, Line: 1, Signature: importSummary(pf.file)}\n\t\tb.addEdge(pkgID, fileID, edgeContains)\n\n\t\tpf.imports = map[string]string{}\n\t\tfor _, spec := range pf.file.Imports {\n\t\t\tb.declareImport(pf, pkgID, spec)\n\t\t}\n\n\t\tfor _, decl := range pf.file.Decls {\n\t\t\tswitch d := decl.(type) {\n\t\t\tcase *ast.GenDecl:\n\t\t\t\tb.declareTypes(pf, fileID, d)\n\t\t\tcase *ast.FuncDecl:\n\t\t\t\tb.declareFunc(pf, fileID, d)\n\t\t\t}\n\t\t}\n\t}\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.builder.declareFunc",
+   "label": "builder.declareFunc",
+   "kind": "method",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 321,
+   "signature": "func (b *builder) declareFunc(pf *parsedFile, fileID string, d *ast.FuncDecl)",
+   "code": "func (b *builder) declareFunc(pf *parsedFile, fileID string, d *ast.FuncDecl) {\n\tline := b.fset.Position(d.Pos()).Line\n\tend := b.fset.Position(d.End()).Line\n\tkind, label, prefix := kindFunc, d.Name.Name, \"func:\"+pf.dir+\".\"\n\trecv := receiverName(d)\n\tif recv != \"\" {\n\t\tkind, label, prefix = kindMethod, recv+\".\"+d.Name.Name, \"func:\"+pf.dir+\".\"+recv+\".\"\n\t}\n\tid := b.uniqueID(prefix+d.Name.Name, line)\n\tb.nodes[id] = \u0026Node{ID: id, Label: label, Kind: kind, Package: pf.dir, File: pf.rel, Line: line,\n\t\tDoc: firstParagraph(d.Doc), Signature: signature(d), Code: b.snippet(pf.rel, line, end)}\n\tb.declIDs[d] = id\n\tb.addEdge(fileID, id, edgeContains)\n\tpf.decls = append(pf.decls, d)\n\n\tif recv == \"\" {\n\t\tif b.funcsByDir[pf.dir] == nil {\n\t\t\tb.funcsByDir[pf.dir] = map[string]string{}\n\t\t}\n\t\tb.funcsByDir[pf.dir][d.Name.Name] = id\n\t\treturn\n\t}\n\tb.methodsByName[d.Name.Name] = append(b.methodsByName[d.Name.Name], id)\n\tb.addEdge(\"type:\"+pf.dir+\".\"+recv, id, edgeMethod)\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.builder.declareImport",
+   "label": "builder.declareImport",
+   "kind": "method",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 269,
+   "signature": "func (b *builder) declareImport(pf *parsedFile, pkgID string, spec *ast.ImportSpec)",
+   "code": "func (b *builder) declareImport(pf *parsedFile, pkgID string, spec *ast.ImportSpec) {\n\timportPath := strings.Trim(spec.Path.Value, `\"`)\n\tlocal := path.Base(importPath)\n\tif spec.Name != nil {\n\t\tlocal = spec.Name.Name\n\t}\n\tif local == \"_\" || local == \".\" {\n\t\treturn\n\t}\n\tdir := \"\"\n\tswitch {\n\tcase importPath == b.module:\n\t\tdir = rootDir\n\tcase strings.HasPrefix(importPath, b.module+\"/\"):\n\t\tdir = strings.TrimPrefix(importPath, b.module+\"/\")\n\t}\n\tpf.imports[local] = dir\n\tif dir != \"\" {\n\t\tb.addEdge(pkgID, packageID(dir), edgeImports)\n\t}\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.builder.declareTypes",
+   "label": "builder.declareTypes",
+   "kind": "method",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 291,
+   "signature": "func (b *builder) declareTypes(pf *parsedFile, fileID string, d *ast.GenDecl)",
+   "code": "func (b *builder) declareTypes(pf *parsedFile, fileID string, d *ast.GenDecl) {\n\tif d.Tok != token.TYPE {\n\t\treturn\n\t}\n\tfor _, spec := range d.Specs {\n\t\tts := spec.(*ast.TypeSpec)\n\t\tline := b.fset.Position(ts.Pos()).Line\n\t\tid := b.uniqueID(\"type:\"+pf.dir+\".\"+ts.Name.Name, line)\n\t\tdoc := ts.Doc\n\t\tif doc == nil \u0026\u0026 len(d.Specs) == 1 {\n\t\t\tdoc = d.Doc\n\t\t}\n\t\tend := b.fset.Position(ts.End()).Line\n\t\tb.nodes[id] = \u0026Node{ID: id, Label: ts.Name.Name, Kind: kindType, Package: pf.dir, File: pf.rel,\n\t\t\tLine: line, Doc: firstParagraph(doc), Signature: typeSignature(ts), Code: b.snippet(pf.rel, line, end)}\n\t\tb.addEdge(fileID, id, edgeContains)\n\t}\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.builder.link",
+   "label": "builder.link",
+   "kind": "method",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 420,
+   "doc": "link resolves calls between declared functions (pass two).",
+   "signature": "func (b *builder) link()",
+   "code": "func (b *builder) link() {\n\tfor _, pf := range b.files {\n\t\tfor _, d := range pf.decls {\n\t\t\tif d.Body != nil {\n\t\t\t\tb.collectCalls(pf, b.declIDs[d], d.Body)\n\t\t\t}\n\t\t}\n\t}\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.builder.packageLabel",
+   "label": "builder.packageLabel",
+   "kind": "method",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 202,
+   "signature": "func (b *builder) packageLabel(dir string) string",
+   "code": "func (b *builder) packageLabel(dir string) string {\n\tif dir == rootDir {\n\t\treturn path.Base(b.module)\n\t}\n\treturn dir\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.builder.parseTree",
+   "label": "builder.parseTree",
+   "kind": "method",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 165,
+   "signature": "func (b *builder) parseTree(root string) error",
+   "code": "func (b *builder) parseTree(root string) error {\n\treturn filepath.WalkDir(root, func(p string, entry fs.DirEntry, err error) error {\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tname := entry.Name()\n\t\tif entry.IsDir() {\n\t\t\tif p != root \u0026\u0026 (strings.HasPrefix(name, \".\") || strings.HasPrefix(name, \"_\") || skippedDirs[name]) {\n\t\t\t\treturn filepath.SkipDir\n\t\t\t}\n\t\t\treturn nil\n\t\t}\n\t\tif !strings.HasSuffix(name, \".go\") || strings.HasSuffix(name, \"_test.go\") {\n\t\t\treturn nil\n\t\t}\n\t\trel, err := filepath.Rel(root, p)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\trel = filepath.ToSlash(rel)\n\t\tdata, err := os.ReadFile(p)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tfile, err := parser.ParseFile(b.fset, rel, data, parser.ParseComments)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tdir := path.Dir(rel)\n\t\tb.sources[rel] = strings.Split(strings.ReplaceAll(string(data), \"\\r\\n\", \"\\n\"), \"\\n\")\n\t\tb.files = append(b.files, \u0026parsedFile{dir: dir, rel: rel, file: file})\n\t\treturn nil\n\t})\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.builder.resolveSelector",
+   "label": "builder.resolveSelector",
+   "kind": "method",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 461,
+   "signature": "func (b *builder) resolveSelector(pf *parsedFile, sel *ast.SelectorExpr) string",
+   "code": "func (b *builder) resolveSelector(pf *parsedFile, sel *ast.SelectorExpr) string {\n\tif x, ok := sel.X.(*ast.Ident); ok \u0026\u0026 x.Obj == nil {\n\t\tif dir, imported := pf.imports[x.Name]; imported {\n\t\t\tif dir == \"\" {\n\t\t\t\treturn \"\"\n\t\t\t}\n\t\t\treturn b.funcsByDir[dir][sel.Sel.Name]\n\t\t}\n\t}\n\tif ids := b.methodsByName[sel.Sel.Name]; len(ids) == 1 {\n\t\treturn ids[0]\n\t}\n\treturn \"\"\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.builder.result",
+   "label": "builder.result",
+   "kind": "method",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 476,
+   "signature": "func (b *builder) result() *Graph",
+   "code": "func (b *builder) result() *Graph {\n\tgraph := \u0026Graph{Module: b.module, Nodes: []Node{}, Edges: []Edge{}}\n\tfor _, n := range b.nodes {\n\t\tgraph.Nodes = append(graph.Nodes, *n)\n\t}\n\tfor e := range b.edges {\n\t\tif b.nodes[e.From] != nil \u0026\u0026 b.nodes[e.To] != nil {\n\t\t\tgraph.Edges = append(graph.Edges, e)\n\t\t}\n\t}\n\tsort.Slice(graph.Nodes, func(i, j int) bool { return graph.Nodes[i].ID \u003c graph.Nodes[j].ID })\n\tsort.Slice(graph.Edges, func(i, j int) bool {\n\t\ta, c := graph.Edges[i], graph.Edges[j]\n\t\tif a.From != c.From {\n\t\t\treturn a.From \u003c c.From\n\t\t}\n\t\tif a.To != c.To {\n\t\t\treturn a.To \u003c c.To\n\t\t}\n\t\treturn a.Kind \u003c c.Kind\n\t})\n\treturn graph\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.builder.snippet",
+   "label": "builder.snippet",
+   "kind": "method",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 391,
+   "signature": "func (b *builder) snippet(file string, start, end int) string",
+   "code": "func (b *builder) snippet(file string, start, end int) string {\n\tlines := b.sources[file]\n\tif start \u003c 1 || start \u003e len(lines) {\n\t\treturn \"\"\n\t}\n\tif end \u003e len(lines) {\n\t\tend = len(lines)\n\t}\n\ttotal := end - start + 1\n\tif total \u003e maxSnippetLines {\n\t\tcut := lines[start-1 : start-1+maxSnippetLines]\n\t\treturn strings.Join(cut, \"\\n\") + fmt.Sprintf(\"\\n// … (+%d linhas)\", total-maxSnippetLines)\n\t}\n\treturn strings.Join(lines[start-1:end], \"\\n\")\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.builder.uniqueID",
+   "label": "builder.uniqueID",
+   "kind": "method",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 210,
+   "doc": "uniqueID avoids collisions such as several init functions in one package.",
+   "signature": "func (b *builder) uniqueID(id string, line int) string",
+   "code": "func (b *builder) uniqueID(id string, line int) string {\n\tif _, taken := b.nodes[id]; taken {\n\t\treturn fmt.Sprintf(\"%s:%d\", id, line)\n\t}\n\treturn id\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.firstParagraph",
+   "label": "firstParagraph",
+   "kind": "func",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 407,
+   "signature": "func firstParagraph(doc *ast.CommentGroup) string",
+   "code": "func firstParagraph(doc *ast.CommentGroup) string {\n\tif doc == nil {\n\t\treturn \"\"\n\t}\n\t// A doc comment's first line is often cut mid-sentence, so keep the whole first paragraph.\n\ttext := strings.TrimSpace(doc.Text())\n\tif i := strings.Index(text, \"\\n\\n\"); i \u003e= 0 {\n\t\ttext = text[:i]\n\t}\n\treturn strings.Join(strings.Fields(text), \" \")\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.importSummary",
+   "label": "importSummary",
+   "kind": "func",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 258,
+   "signature": "func importSummary(file *ast.File) string",
+   "code": "func importSummary(file *ast.File) string {\n\tvar paths []string\n\tfor _, spec := range file.Imports {\n\t\tpaths = append(paths, strings.Trim(spec.Path.Value, `\"`))\n\t}\n\tif len(paths) == 0 {\n\t\treturn \"\"\n\t}\n\treturn \"import \" + strings.Join(paths, \", \")\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.main",
+   "label": "main",
+   "kind": "func",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 102,
+   "signature": "func main()",
+   "code": "func main() {\n\troot := flag.String(\"root\", \".\", \"module root directory\")\n\tout := flag.String(\"o\", \"\", \"output file (default: stdout)\")\n\tflag.Parse()\n\n\tgraph, err := buildGraph(*root)\n\tif err != nil {\n\t\tfmt.Fprintln(os.Stderr, \"codegraph:\", err)\n\t\tos.Exit(1)\n\t}\n\tdata, err := json.MarshalIndent(graph, \"\", \" \")\n\tif err != nil {\n\t\tfmt.Fprintln(os.Stderr, \"codegraph:\", err)\n\t\tos.Exit(1)\n\t}\n\tdata = append(data, '\\n')\n\tif *out == \"\" {\n\t\tos.Stdout.Write(data)\n\t\treturn\n\t}\n\tif err := os.WriteFile(*out, data, outputFileMode); err != nil {\n\t\tfmt.Fprintln(os.Stderr, \"codegraph:\", err)\n\t\tos.Exit(1)\n\t}\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.packageID",
+   "label": "packageID",
+   "kind": "func",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 200,
+   "signature": "func packageID(dir string) string",
+   "code": "func packageID(dir string) string { return \"pkg:\" + dir }"
+  },
+  {
+   "id": "func:cmd/codegraph.printNode",
+   "label": "printNode",
+   "kind": "func",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 383,
+   "signature": "func printNode(node any) string",
+   "code": "func printNode(node any) string {\n\tvar buf bytes.Buffer\n\tif err := printer.Fprint(\u0026buf, token.NewFileSet(), node); err != nil {\n\t\treturn \"\"\n\t}\n\treturn buf.String()\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.readModulePath",
+   "label": "readModulePath",
+   "kind": "func",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 151,
+   "signature": "func readModulePath(goMod string) (string, error)",
+   "code": "func readModulePath(goMod string) (string, error) {\n\tdata, err := os.ReadFile(goMod)\n\tif err != nil {\n\t\treturn \"\", err\n\t}\n\tfor _, line := range strings.Split(string(data), \"\\n\") {\n\t\tline = strings.TrimSpace(line)\n\t\tif strings.HasPrefix(line, modulePrefix) {\n\t\t\treturn strings.Trim(strings.TrimSpace(strings.TrimPrefix(line, modulePrefix)), `\"`), nil\n\t\t}\n\t}\n\treturn \"\", fmt.Errorf(\"no module line in %s\", goMod)\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.receiverName",
+   "label": "receiverName",
+   "kind": "func",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 348,
+   "doc": "receiverName returns the receiver type name, or \"\" for a plain function.",
+   "signature": "func receiverName(d *ast.FuncDecl) string",
+   "code": "func receiverName(d *ast.FuncDecl) string {\n\tif d.Recv == nil || len(d.Recv.List) == 0 {\n\t\treturn \"\"\n\t}\n\texpr := d.Recv.List[0].Type\n\tfor {\n\t\tswitch t := expr.(type) {\n\t\tcase *ast.StarExpr:\n\t\t\texpr = t.X\n\t\tcase *ast.IndexExpr:\n\t\t\texpr = t.X\n\t\tcase *ast.IndexListExpr:\n\t\t\texpr = t.X\n\t\tcase *ast.ParenExpr:\n\t\t\texpr = t.X\n\t\tcase *ast.Ident:\n\t\t\treturn t.Name\n\t\tdefault:\n\t\t\treturn \"\"\n\t\t}\n\t}\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.signature",
+   "label": "signature",
+   "kind": "func",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 372,
+   "doc": "signature prints the declaration without its body or comment.",
+   "signature": "func signature(d *ast.FuncDecl) string",
+   "code": "func signature(d *ast.FuncDecl) string {\n\theader := *d\n\theader.Body = nil\n\theader.Doc = nil\n\tsig := strings.Join(strings.Fields(printNode(\u0026header)), \" \")\n\tif len(sig) \u003e maxSignatureLen {\n\t\tsig = sig[:maxSignatureLen] + \"…\"\n\t}\n\treturn sig\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.typeSignature",
+   "label": "typeSignature",
+   "kind": "func",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 310,
+   "signature": "func typeSignature(ts *ast.TypeSpec) string",
+   "code": "func typeSignature(ts *ast.TypeSpec) string {\n\tswitch t := ts.Type.(type) {\n\tcase *ast.StructType:\n\t\treturn \"type \" + ts.Name.Name + \" struct\"\n\tcase *ast.InterfaceType:\n\t\treturn \"type \" + ts.Name.Name + \" interface\"\n\tdefault:\n\t\treturn \"type \" + ts.Name.Name + \" \" + printNode(t)\n\t}\n}"
+  },
+  {
+   "id": "func:cmd/wasm.consultedCell",
+   "label": "consultedCell",
+   "kind": "func",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 144,
+   "doc": "consultedCell returns the table cell a step reads: the stack top against the current input token, when the top is a non-terminal with an entry there.",
+   "signature": "func consultedCell(step ll1.Step) *cellRefJSON",
+   "code": "func consultedCell(step ll1.Step) *cellRefJSON {\n\tif len(step.Stack) == 0 || len(step.Input) == 0 {\n\t\treturn nil\n\t}\n\ttop := step.Stack[len(step.Stack)-1]\n\tif !grammar.IsNonTerminal(top) {\n\t\treturn nil\n\t}\n\tif _, ok := table.Production(top, step.Input[0]); !ok {\n\t\treturn nil\n\t}\n\treturn \u0026cellRefJSON{NonTerminal: top, Column: step.Input[0]}\n}"
+  },
+  {
+   "id": "func:cmd/wasm.grammarValue",
+   "label": "grammarValue",
+   "kind": "func",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 99,
+   "signature": "func grammarValue() any",
+   "code": "func grammarValue() any {\n\tout := grammarJSON{\n\t\tStart:        grammar.Start,\n\t\tGrouped:      strings.Split(strings.TrimSpace(grammar.String()), \"\\n\"),\n\t\tTerminals:    grammar.Terminals,\n\t\tNonTerminals: grammar.NonTerminals,\n\t}\n\tfor _, production := range grammar.Productions {\n\t\tout.Productions = append(out.Productions, productionJSON{\n\t\t\tNumber: production.Number,\n\t\t\tHead:   production.Head,\n\t\t\tBody:   production.Body,\n\t\t\tText:   production.String(),\n\t\t})\n\t}\n\treturn toJSON(out)\n}"
+  },
+  {
+   "id": "func:cmd/wasm.main",
+   "label": "main",
+   "kind": "func",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 170,
+   "signature": "func main()",
+   "code": "func main() {\n\tapi := map[string]any{\n\t\t\"grammar\": js.FuncOf(func(js.Value, []js.Value) any { return grammarValue() }),\n\t\t\"sets\":    js.FuncOf(func(js.Value, []js.Value) any { return setsValue() }),\n\t\t\"table\":   js.FuncOf(func(js.Value, []js.Value) any { return tableValue() }),\n\t\t\"parse\": js.FuncOf(func(_ js.Value, args []js.Value) any {\n\t\t\tinput := \"\"\n\t\t\tif len(args) \u003e 0 {\n\t\t\t\tinput = args[0].String()\n\t\t\t}\n\t\t\treturn parseValue(input)\n\t\t}),\n\t\t\"generate\": js.FuncOf(func(js.Value, []js.Value) any {\n\t\t\treturn ll1.Generate(grammar, rng, maxGenerateDepth)\n\t\t}),\n\t\t\"generateInvalid\": js.FuncOf(func(js.Value, []js.Value) any {\n\t\t\treturn ll1.GenerateInvalid(grammar, rng)\n\t\t}),\n\t}\n\tjs.Global().Set(\"ll1\", js.ValueOf(api))\n\tselect {}\n}"
+  },
+  {
+   "id": "func:cmd/wasm.parseValue",
+   "label": "parseValue",
+   "kind": "func",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 158,
+   "signature": "func parseValue(input string) any",
+   "code": "func parseValue(input string) any {\n\tresult := ll1.Parse(table, input)\n\tout := resultJSON{Accepted: result.Accepted, Message: result.Message, Tokens: []tokenJSON{}, Steps: []stepJSON{}}\n\tfor _, token := range result.Tokens {\n\t\tout.Tokens = append(out.Tokens, tokenJSON{token.Kind, token.Lexeme, token.Pos})\n\t}\n\tfor _, step := range result.Steps {\n\t\tout.Steps = append(out.Steps, stepJSON{step.Number, step.Stack, step.Input, step.Action, consultedCell(step)})\n\t}\n\treturn toJSON(out)\n}"
+  },
+  {
+   "id": "func:cmd/wasm.setsValue",
+   "label": "setsValue",
+   "kind": "func",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 117,
+   "signature": "func setsValue() any",
+   "code": "func setsValue() any {\n\tfirst, follow := grammar.First(), grammar.Follow()\n\trows := []setsRowJSON{}\n\tfor _, nonTerminal := range grammar.NonTerminals {\n\t\trows = append(rows, setsRowJSON{nonTerminal, first[nonTerminal], follow[nonTerminal]})\n\t}\n\treturn toJSON(rows)\n}"
+  },
+  {
+   "id": "func:cmd/wasm.tableValue",
+   "label": "tableValue",
+   "kind": "func",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 126,
+   "signature": "func tableValue() any",
+   "code": "func tableValue() any {\n\tout := tableJSON{Columns: table.Columns, Conflicts: append([]string{}, table.Conflicts...), Rows: []tableRowJSON{}}\n\tfor _, nonTerminal := range grammar.NonTerminals {\n\t\trow := tableRowJSON{NonTerminal: nonTerminal}\n\t\tfor _, column := range table.Columns {\n\t\t\tcell := tableCellJSON{Column: column}\n\t\t\tif production, ok := table.Production(nonTerminal, column); ok {\n\t\t\t\tcell.Number, cell.Text = production.Number, production.String()\n\t\t\t}\n\t\t\trow.Cells = append(row.Cells, cell)\n\t\t}\n\t\tout.Rows = append(out.Rows, row)\n\t}\n\treturn toJSON(out)\n}"
+  },
+  {
+   "id": "func:cmd/wasm.toJSON",
+   "label": "toJSON",
+   "kind": "func",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 91,
+   "signature": "func toJSON(value any) any",
+   "code": "func toJSON(value any) any {\n\tencoded, err := json.Marshal(value)\n\tif err != nil {\n\t\treturn `{\"error\":\"` + err.Error() + `\"}`\n\t}\n\treturn string(encoded)\n}"
+  },
+  {
+   "id": "func:ll1.BuildTable",
+   "label": "BuildTable",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/table.go",
+   "line": 17,
+   "doc": "BuildTable fills the table from FIRST and FOLLOW: production A -\u003e α goes in M[A, a] for every terminal a in FIRST(α), and, when ε is in FIRST(α), in M[A, b] for every b in FOLLOW(A). A cell claimed twice is a conflict; the first production keeps the cell.",
+   "signature": "func BuildTable(g *Grammar) *Table",
+   "code": "func BuildTable(g *Grammar) *Table {\n\tt := \u0026Table{\n\t\tGrammar: g,\n\t\tColumns: append(append([]string{}, g.Terminals...), EndMarker),\n\t\tCells:   make(map[string]map[string]int, len(g.NonTerminals)),\n\t}\n\tfor _, nt := range g.NonTerminals {\n\t\tt.Cells[nt] = map[string]int{}\n\t}\n\tfirst := g.firstSets()\n\tfollow := g.followSets(first)\n\tfor _, p := range g.Productions {\n\t\tbodyFirst := g.firstOfSequence(first, p.Body)\n\t\tfor _, column := range t.Columns {\n\t\t\tif bodyFirst[column] || (bodyFirst[Epsilon] \u0026\u0026 follow[p.Head][column]) {\n\t\t\t\tt.place(p, column)\n\t\t\t}\n\t\t}\n\t}\n\treturn t\n}"
+  },
+  {
+   "id": "func:ll1.Default",
+   "label": "Default",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/grammar.go",
+   "line": 49,
+   "doc": "Default returns the fixed expression grammar of the assignment.",
+   "signature": "func Default() *Grammar",
+   "code": "func Default() *Grammar {\n\tbodies := []struct {\n\t\thead string\n\t\tbody string\n\t}{\n\t\t{\"E\", \"T E'\"},\n\t\t{\"E'\", \"+ T E'\"},\n\t\t{\"E'\", \"- T E'\"},\n\t\t{\"E'\", Epsilon},\n\t\t{\"T\", \"F T'\"},\n\t\t{\"T'\", \"* F T'\"},\n\t\t{\"T'\", \"/ F T'\"},\n\t\t{\"T'\", Epsilon},\n\t\t{\"F\", \"( E )\"},\n\t\t{\"F\", TerminalID},\n\t\t{\"F\", TerminalNum},\n\t}\n\tg := \u0026Grammar{\n\t\tStart:        \"E\",\n\t\tNonTerminals: []string{\"E\", \"E'\", \"T\", \"T'\", \"F\"},\n\t\tTerminals:    []string{TerminalID, TerminalNum, \"+\", \"-\", \"*\", \"/\", \"(\", \")\"},\n\t}\n\tfor i, b := range bodies {\n\t\tg.Productions = append(g.Productions, Production{\n\t\t\tNumber: i + 1,\n\t\t\tHead:   b.head,\n\t\t\tBody:   strings.Fields(b.body),\n\t\t})\n\t}\n\treturn g\n}"
+  },
+  {
+   "id": "func:ll1.Generate",
+   "label": "Generate",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/generator.go",
+   "line": 26,
+   "doc": "Generate builds a random valid sentence by a leftmost derivation from the start symbol. Below maxDepth every production is equally likely; from maxDepth on, only the productions that finish the derivation fastest are chosen. Tokens are joined by spaces: \"x + 3 * ( y )\".",
+   "signature": "func Generate(g *Grammar, rng *rand.Rand, maxDepth int) string",
+   "code": "func Generate(g *Grammar, rng *rand.Rand, maxDepth int) string {\n\theights := g.productionHeights()\n\tvar lexemes []string\n\tvar expand func(symbol string, depth int)\n\texpand = func(symbol string, depth int) {\n\t\tif !g.IsNonTerminal(symbol) {\n\t\t\tlexemes = append(lexemes, lexemeFor(symbol, rng))\n\t\t\treturn\n\t\t}\n\t\tp := chooseProduction(g.ProductionsOf(symbol), heights, rng, depth \u003e= maxDepth)\n\t\tif p.IsEmpty() {\n\t\t\treturn\n\t\t}\n\t\tfor _, child := range p.Body {\n\t\t\texpand(child, depth+1)\n\t\t}\n\t}\n\texpand(g.Start, 0)\n\treturn strings.Join(lexemes, \" \")\n}"
+  },
+  {
+   "id": "func:ll1.GenerateInvalid",
+   "label": "GenerateInvalid",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/generator.go",
+   "line": 50,
+   "doc": "GenerateInvalid mutates a valid sentence (drops a token, duplicates an operator, adds an unbalanced parenthesis or inserts an illegal character) and retries until the parser rejects the result.",
+   "signature": "func GenerateInvalid(g *Grammar, rng *rand.Rand) string",
+   "code": "func GenerateInvalid(g *Grammar, rng *rand.Rand) string {\n\ttable := BuildTable(g)\n\tfor {\n\t\tlexemes := strings.Fields(Generate(g, rng, invalidBaseDepth))\n\t\tcandidate := strings.Join(mutate(lexemes, rng), \" \")\n\t\tif !Parse(table, candidate).Accepted {\n\t\t\treturn candidate\n\t\t}\n\t}\n}"
+  },
+  {
+   "id": "func:ll1.Grammar.First",
+   "label": "Grammar.First",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/sets.go",
+   "line": 20,
+   "doc": "First computes FIRST of every non-terminal with the fixed-point algorithm. Each set is ordered like Terminals, with ε last when present.",
+   "signature": "func (g *Grammar) First() map[string][]string",
+   "code": "func (g *Grammar) First() map[string][]string {\n\tfirst := g.firstSets()\n\tresult := make(map[string][]string, len(first))\n\tfor nt, set := range first {\n\t\tresult[nt] = g.ordered(set, Epsilon)\n\t}\n\treturn result\n}"
+  },
+  {
+   "id": "func:ll1.Grammar.FirstOfSequence",
+   "label": "Grammar.FirstOfSequence",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/sets.go",
+   "line": 31,
+   "doc": "FirstOfSequence returns FIRST of a sequence of symbols, ordered like Terminals with ε last. An empty sequence (or just ε) gives {ε}.",
+   "signature": "func (g *Grammar) FirstOfSequence(seq []string) []string",
+   "code": "func (g *Grammar) FirstOfSequence(seq []string) []string {\n\treturn g.ordered(g.firstOfSequence(g.firstSets(), seq), Epsilon)\n}"
+  },
+  {
+   "id": "func:ll1.Grammar.Follow",
+   "label": "Grammar.Follow",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/sets.go",
+   "line": 37,
+   "doc": "Follow computes FOLLOW of every non-terminal with the fixed-point algorithm. Each set is ordered like Terminals, with $ last when present.",
+   "signature": "func (g *Grammar) Follow() map[string][]string",
+   "code": "func (g *Grammar) Follow() map[string][]string {\n\tfollow := g.followSets(g.firstSets())\n\tresult := make(map[string][]string, len(follow))\n\tfor nt, set := range follow {\n\t\tresult[nt] = g.ordered(set, EndMarker)\n\t}\n\treturn result\n}"
+  },
+  {
+   "id": "func:ll1.Grammar.IsNonTerminal",
+   "label": "Grammar.IsNonTerminal",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/grammar.go",
+   "line": 87,
+   "doc": "IsNonTerminal reports whether s is one of the grammar's non-terminals.",
+   "signature": "func (g *Grammar) IsNonTerminal(s string) bool",
+   "code": "func (g *Grammar) IsNonTerminal(s string) bool {\n\treturn contains(g.NonTerminals, s)\n}"
+  },
+  {
+   "id": "func:ll1.Grammar.IsTerminal",
+   "label": "Grammar.IsTerminal",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/grammar.go",
+   "line": 82,
+   "doc": "IsTerminal reports whether s is one of the grammar's terminals.",
+   "signature": "func (g *Grammar) IsTerminal(s string) bool",
+   "code": "func (g *Grammar) IsTerminal(s string) bool {\n\treturn contains(g.Terminals, s)\n}"
+  },
+  {
+   "id": "func:ll1.Grammar.ProductionsOf",
+   "label": "Grammar.ProductionsOf",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/grammar.go",
+   "line": 92,
+   "doc": "ProductionsOf returns the productions whose head is nonTerminal, in order.",
+   "signature": "func (g *Grammar) ProductionsOf(nonTerminal string) []Production",
+   "code": "func (g *Grammar) ProductionsOf(nonTerminal string) []Production {\n\tvar result []Production\n\tfor _, p := range g.Productions {\n\t\tif p.Head == nonTerminal {\n\t\t\tresult = append(result, p)\n\t\t}\n\t}\n\treturn result\n}"
+  },
+  {
+   "id": "func:ll1.Grammar.String",
+   "label": "Grammar.String",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/grammar.go",
+   "line": 104,
+   "doc": "String prints one line per non-terminal with alternatives grouped: \"E' -\u003e + T E' | - T E' | ε\".",
+   "signature": "func (g *Grammar) String() string",
+   "code": "func (g *Grammar) String() string {\n\tvar sb strings.Builder\n\tfor _, nt := range g.NonTerminals {\n\t\tvar alternatives []string\n\t\tfor _, p := range g.ProductionsOf(nt) {\n\t\t\talternatives = append(alternatives, strings.Join(p.Body, \" \"))\n\t\t}\n\t\tsb.WriteString(nt)\n\t\tsb.WriteString(Arrow)\n\t\tsb.WriteString(strings.Join(alternatives, \" | \"))\n\t\tsb.WriteString(\"\\n\")\n\t}\n\treturn sb.String()\n}"
+  },
+  {
+   "id": "func:ll1.Grammar.firstOfSequence",
+   "label": "Grammar.firstOfSequence",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/sets.go",
+   "line": 64,
+   "doc": "firstOfSequence uses the current (possibly partial) FIRST sets.",
+   "signature": "func (g *Grammar) firstOfSequence(first map[string]symbolSet, seq []string) symbolSet",
+   "code": "func (g *Grammar) firstOfSequence(first map[string]symbolSet, seq []string) symbolSet {\n\tresult := symbolSet{}\n\tfor _, symbol := range seq {\n\t\tif symbol == Epsilon {\n\t\t\tcontinue\n\t\t}\n\t\tif !g.IsNonTerminal(symbol) {\n\t\t\tresult[symbol] = true\n\t\t\treturn result\n\t\t}\n\t\tresult.addAll(first[symbol], Epsilon)\n\t\tif !first[symbol][Epsilon] {\n\t\t\treturn result\n\t\t}\n\t}\n\t// Every symbol can vanish (or the sequence is empty).\n\tresult[Epsilon] = true\n\treturn result\n}"
+  },
+  {
+   "id": "func:ll1.Grammar.firstSets",
+   "label": "Grammar.firstSets",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/sets.go",
+   "line": 47,
+   "doc": "firstSets repeats the FIRST rules until no set changes.",
+   "signature": "func (g *Grammar) firstSets() map[string]symbolSet",
+   "code": "func (g *Grammar) firstSets() map[string]symbolSet {\n\tfirst := make(map[string]symbolSet, len(g.NonTerminals))\n\tfor _, nt := range g.NonTerminals {\n\t\tfirst[nt] = symbolSet{}\n\t}\n\tfor changed := true; changed; {\n\t\tchanged = false\n\t\tfor _, p := range g.Productions {\n\t\t\tif first[p.Head].addAll(g.firstOfSequence(first, p.Body), \"\") {\n\t\t\t\tchanged = true\n\t\t\t}\n\t\t}\n\t}\n\treturn first\n}"
+  },
+  {
+   "id": "func:ll1.Grammar.followSets",
+   "label": "Grammar.followSets",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/sets.go",
+   "line": 85,
+   "doc": "followSets repeats the FOLLOW rules until no set changes.",
+   "signature": "func (g *Grammar) followSets(first map[string]symbolSet) map[string]symbolSet",
+   "code": "func (g *Grammar) followSets(first map[string]symbolSet) map[string]symbolSet {\n\tfollow := make(map[string]symbolSet, len(g.NonTerminals))\n\tfor _, nt := range g.NonTerminals {\n\t\tfollow[nt] = symbolSet{}\n\t}\n\tfollow[g.Start][EndMarker] = true\n\tfor changed := true; changed; {\n\t\tchanged = false\n\t\tfor _, p := range g.Productions {\n\t\t\tfor i, symbol := range p.Body {\n\t\t\t\tif !g.IsNonTerminal(symbol) {\n\t\t\t\t\tcontinue\n\t\t\t\t}\n\t\t\t\trest := g.firstOfSequence(first, p.Body[i+1:])\n\t\t\t\tif follow[symbol].addAll(rest, Epsilon) {\n\t\t\t\t\tchanged = true\n\t\t\t\t}\n\t\t\t\tif rest[Epsilon] \u0026\u0026 follow[symbol].addAll(follow[p.Head], \"\") {\n\t\t\t\t\tchanged = true\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n\treturn follow\n}"
+  },
+  {
+   "id": "func:ll1.Grammar.ordered",
+   "label": "Grammar.ordered",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/sets.go",
+   "line": 112,
+   "doc": "ordered lists the set in Terminals order, then the extra symbol if present.",
+   "signature": "func (g *Grammar) ordered(set symbolSet, extra string) []string",
+   "code": "func (g *Grammar) ordered(set symbolSet, extra string) []string {\n\tresult := []string{}\n\tfor _, t := range g.Terminals {\n\t\tif set[t] {\n\t\t\tresult = append(result, t)\n\t\t}\n\t}\n\tif set[extra] {\n\t\tresult = append(result, extra)\n\t}\n\treturn result\n}"
+  },
+  {
+   "id": "func:ll1.Grammar.productionHeights",
+   "label": "Grammar.productionHeights",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/generator.go",
+   "line": 134,
+   "doc": "productionHeights gives, per production number, the height of the shortest derivation tree that starts with it (fixed-point computation).",
+   "signature": "func (g *Grammar) productionHeights() map[int]int",
+   "code": "func (g *Grammar) productionHeights() map[int]int {\n\tsymbolHeight := map[string]int{}\n\tfor _, nt := range g.NonTerminals {\n\t\tsymbolHeight[nt] = math.MaxInt\n\t}\n\theightOf := func(p Production) int {\n\t\theight := 0\n\t\tfor _, symbol := range p.Body {\n\t\t\tif h, isNonTerminal := symbolHeight[symbol]; isNonTerminal {\n\t\t\t\tif h == math.MaxInt {\n\t\t\t\t\treturn math.MaxInt\n\t\t\t\t}\n\t\t\t\theight = max(height, h)\n\t\t\t}\n\t\t}\n\t\treturn height + 1\n\t}\n\tfor changed := true; changed; {\n\t\tchanged = false\n\t\tfor _, p := range g.Productions {\n\t\t\tif h := heightOf(p); h \u003c symbolHeight[p.Head] {\n\t\t\t\tsymbolHeight[p.Head] = h\n\t\t\t\tchanged = true\n\t\t\t}\n\t\t}\n\t}\n\theights := make(map[int]int, len(g.Productions))\n\tfor _, p := range g.Productions {\n\t\theights[p.Number] = heightOf(p)\n\t}\n\treturn heights\n}"
+  },
+  {
+   "id": "func:ll1.LexicalError.Detail",
+   "label": "LexicalError.Detail",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/lexer.go",
+   "line": 23,
+   "doc": "Detail describes the bad character and where it is.",
+   "signature": "func (e *LexicalError) Detail() string",
+   "code": "func (e *LexicalError) Detail() string {\n\treturn fmt.Sprintf(\"caractere '%c' inválido na posição %d\", e.Char, e.Pos)\n}"
+  },
+  {
+   "id": "func:ll1.LexicalError.Error",
+   "label": "LexicalError.Error",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/lexer.go",
+   "line": 18,
+   "signature": "func (e *LexicalError) Error() string",
+   "code": "func (e *LexicalError) Error() string {\n\treturn \"erro léxico: \" + e.Detail()\n}"
+  },
+  {
+   "id": "func:ll1.Parse",
+   "label": "Parse",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/parser.go",
+   "line": 31,
+   "doc": "Parse runs the non-recursive predictive parser over input, recording a Step for every action, including the final accept or error.",
+   "signature": "func Parse(t *Table, input string) Result",
+   "code": "func Parse(t *Table, input string) Result {\n\tstart := []string{EndMarker, t.Grammar.Start}\n\ttokens, err := Tokenize(input)\n\tif err != nil {\n\t\t// Tokenize only fails with a *LexicalError.\n\t\treturn lexicalFailure(start, input, err.(*LexicalError))\n\t}\n\n\tresult := Result{Tokens: tokens}\n\tstack := start\n\tposition := 0\n\tfor {\n\t\ttop := stack[len(stack)-1]\n\t\tcurrent := tokens[position]\n\t\tstep := Step{\n\t\t\tNumber: len(result.Steps) + 1,\n\t\t\tStack:  append([]string{}, stack...),\n\t\t\tInput:  kinds(tokens[position:]),\n\t\t}\n\n\t\tswitch {\n\t\tcase top == EndMarker \u0026\u0026 current.Kind == EndMarker:\n\t\t\tstep.Action = ActionAccept\n\t\t\tresult.Steps = append(result.Steps, step)\n\t\t\tresult.Accepted = true\n\t\t\tresult.Message = MessageAccepted\n\t\t\treturn result\n\n\t\tcase !t.Grammar.IsNonTerminal(top):\n\t\t\tif top != current.Kind {\n\t\t\t\treason := fmt.Sprintf(\"%s, esperado %s\", unexpected(current), describeSymbol(top))\n\t\t\t\treturn reject(result, step, reason)\n\t\t\t}\n\t\t\tstep.Action = matchAction(current)\n\t\t\tstack = stack[:len(stack)-1]\n\t\t\tposition++\n\n\t\tdefault:\n\t\t\tp, ok := t.Production(top, current.Kind)\n\t\t\tif !ok {\n// … (+14 linhas)"
+  },
+  {
+   "id": "func:ll1.Production.IsEmpty",
+   "label": "Production.IsEmpty",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/grammar.go",
+   "line": 31,
+   "doc": "IsEmpty reports whether the production derives the empty string directly.",
+   "signature": "func (p Production) IsEmpty() bool",
+   "code": "func (p Production) IsEmpty() bool {\n\treturn len(p.Body) == 1 \u0026\u0026 p.Body[0] == Epsilon\n}"
+  },
+  {
+   "id": "func:ll1.Production.String",
+   "label": "Production.String",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/grammar.go",
+   "line": 36,
+   "doc": "String prints the production as \"E' -\u003e + T E'\".",
+   "signature": "func (p Production) String() string",
+   "code": "func (p Production) String() string {\n\treturn p.Head + Arrow + strings.Join(p.Body, \" \")\n}"
+  },
+  {
+   "id": "func:ll1.Table.Production",
+   "label": "Table.Production",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/table.go",
+   "line": 50,
+   "doc": "Production returns the production in M[nonTerminal, column], if any.",
+   "signature": "func (t *Table) Production(nonTerminal, column string) (Production, bool)",
+   "code": "func (t *Table) Production(nonTerminal, column string) (Production, bool) {\n\tnumber, ok := t.Cells[nonTerminal][column]\n\tif !ok {\n\t\treturn Production{}, false\n\t}\n\tfor _, p := range t.Grammar.Productions {\n\t\tif p.Number == number {\n\t\t\treturn p, true\n\t\t}\n\t}\n\treturn Production{}, false\n}"
+  },
+  {
+   "id": "func:ll1.Table.place",
+   "label": "Table.place",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/table.go",
+   "line": 39,
+   "signature": "func (t *Table) place(p Production, column string)",
+   "code": "func (t *Table) place(p Production, column string) {\n\trow := t.Cells[p.Head]\n\tif existing, taken := row[column]; taken {\n\t\tt.Conflicts = append(t.Conflicts, fmt.Sprintf(\n\t\t\t\"Conflito em M[%s, %s]: produções %d e %d\", p.Head, column, existing, p.Number))\n\t\treturn\n\t}\n\trow[column] = p.Number\n}"
+  },
+  {
+   "id": "func:ll1.Tokenize",
+   "label": "Tokenize",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/lexer.go",
+   "line": 33,
+   "doc": "Tokenize splits the input into tokens. Identifiers [A-Za-z_][A-Za-z0-9_]* become \"id\", digit runs become \"num\", spaces are skipped and any other character is a *LexicalError. On success the last token is always \"$\".",
+   "signature": "func Tokenize(input string) ([]Token, error)",
+   "code": "func Tokenize(input string) ([]Token, error) {\n\trunes := []rune(input)\n\tvar tokens []Token\n\tfor i := 0; i \u003c len(runes); {\n\t\tr := runes[i]\n\t\tstart := i\n\t\tswitch {\n\t\tcase isSpace(r):\n\t\t\ti++\n\t\t\tcontinue\n\t\tcase isLetter(r):\n\t\t\tfor i \u003c len(runes) \u0026\u0026 (isLetter(runes[i]) || isDigit(runes[i])) {\n\t\t\t\ti++\n\t\t\t}\n\t\t\ttokens = append(tokens, Token{Kind: TerminalID, Lexeme: string(runes[start:i]), Pos: start + 1})\n\t\tcase isDigit(r):\n\t\t\tfor i \u003c len(runes) \u0026\u0026 isDigit(runes[i]) {\n\t\t\t\ti++\n\t\t\t}\n\t\t\ttokens = append(tokens, Token{Kind: TerminalNum, Lexeme: string(runes[start:i]), Pos: start + 1})\n\t\tcase isOperator(r):\n\t\t\ti++\n\t\t\ttokens = append(tokens, Token{Kind: string(r), Lexeme: string(r), Pos: start + 1})\n\t\tdefault:\n\t\t\treturn nil, \u0026LexicalError{Char: r, Pos: start + 1}\n\t\t}\n\t}\n\ttokens = append(tokens, Token{Kind: EndMarker, Lexeme: EndMarker, Pos: len(runes) + 1})\n\treturn tokens, nil\n}"
+  },
+  {
+   "id": "func:ll1.chooseProduction",
+   "label": "chooseProduction",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/generator.go",
+   "line": 114,
+   "doc": "chooseProduction picks uniformly, or among the shortest-finishing productions when shortest is set.",
+   "signature": "func chooseProduction(options []Production, heights map[int]int, rng *rand.Rand, shortest bool) Production",
+   "code": "func chooseProduction(options []Production, heights map[int]int, rng *rand.Rand, shortest bool) Production {\n\tif shortest {\n\t\tbest := math.MaxInt\n\t\tvar fastest []Production\n\t\tfor _, p := range options {\n\t\t\tswitch h := heights[p.Number]; {\n\t\t\tcase h \u003c best:\n\t\t\t\tbest = h\n\t\t\t\tfastest = []Production{p}\n\t\t\tcase h == best:\n\t\t\t\tfastest = append(fastest, p)\n\t\t\t}\n\t\t}\n\t\toptions = fastest\n\t}\n\treturn options[rng.Intn(len(options))]\n}"
+  },
+  {
+   "id": "func:ll1.contains",
+   "label": "contains",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/grammar.go",
+   "line": 119,
+   "signature": "func contains(list []string, s string) bool",
+   "code": "func contains(list []string, s string) bool {\n\tfor _, item := range list {\n\t\tif item == s {\n\t\t\treturn true\n\t\t}\n\t}\n\treturn false\n}"
+  },
+  {
+   "id": "func:ll1.describeSymbol",
+   "label": "describeSymbol",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/parser.go",
+   "line": 121,
+   "signature": "func describeSymbol(symbol string) string",
+   "code": "func describeSymbol(symbol string) string {\n\tif symbol == EndMarker {\n\t\treturn \"fim da entrada\"\n\t}\n\treturn \"'\" + symbol + \"'\"\n}"
+  },
+  {
+   "id": "func:ll1.insertAt",
+   "label": "insertAt",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/generator.go",
+   "line": 95,
+   "signature": "func insertAt(lexemes []string, i int, lexeme string) []string",
+   "code": "func insertAt(lexemes []string, i int, lexeme string) []string {\n\tresult := append([]string{}, lexemes[:i]...)\n\tresult = append(result, lexeme)\n\treturn append(result, lexemes[i:]...)\n}"
+  },
+  {
+   "id": "func:ll1.isDigit",
+   "label": "isDigit",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/lexer.go",
+   "line": 72,
+   "signature": "func isDigit(r rune) bool",
+   "code": "func isDigit(r rune) bool {\n\treturn r \u003e= '0' \u0026\u0026 r \u003c= '9'\n}"
+  },
+  {
+   "id": "func:ll1.isLetter",
+   "label": "isLetter",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/lexer.go",
+   "line": 68,
+   "signature": "func isLetter(r rune) bool",
+   "code": "func isLetter(r rune) bool {\n\treturn r == '_' || (r \u003e= 'a' \u0026\u0026 r \u003c= 'z') || (r \u003e= 'A' \u0026\u0026 r \u003c= 'Z')\n}"
+  },
+  {
+   "id": "func:ll1.isOperator",
+   "label": "isOperator",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/lexer.go",
+   "line": 76,
+   "signature": "func isOperator(r rune) bool",
+   "code": "func isOperator(r rune) bool {\n\tfor _, op := range operators {\n\t\tif r == op {\n\t\t\treturn true\n\t\t}\n\t}\n\treturn false\n}"
+  },
+  {
+   "id": "func:ll1.isSpace",
+   "label": "isSpace",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/lexer.go",
+   "line": 64,
+   "signature": "func isSpace(r rune) bool",
+   "code": "func isSpace(r rune) bool {\n\treturn r == ' ' || r == '\\t' || r == '\\r' || r == '\\n'\n}"
+  },
+  {
+   "id": "func:ll1.kinds",
+   "label": "kinds",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/parser.go",
+   "line": 113,
+   "signature": "func kinds(tokens []Token) []string",
+   "code": "func kinds(tokens []Token) []string {\n\tresult := make([]string, len(tokens))\n\tfor i, token := range tokens {\n\t\tresult[i] = token.Kind\n\t}\n\treturn result\n}"
+  },
+  {
+   "id": "func:ll1.lexemeFor",
+   "label": "lexemeFor",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/generator.go",
+   "line": 101,
+   "signature": "func lexemeFor(terminal string, rng *rand.Rand) string",
+   "code": "func lexemeFor(terminal string, rng *rand.Rand) string {\n\tswitch terminal {\n\tcase TerminalID:\n\t\treturn identifierLexemes[rng.Intn(len(identifierLexemes))]\n\tcase TerminalNum:\n\t\treturn strconv.Itoa(rng.Intn(maxNumberLexeme + 1))\n\tdefault:\n\t\treturn terminal\n\t}\n}"
+  },
+  {
+   "id": "func:ll1.lexicalFailure",
+   "label": "lexicalFailure",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/parser.go",
+   "line": 95,
+   "doc": "lexicalFailure builds the single-step trace of a sentence rejected by the lexer: the input column shows the tokens read so far and the bad character.",
+   "signature": "func lexicalFailure(start []string, input string, lexErr *LexicalError) Result",
+   "code": "func lexicalFailure(start []string, input string, lexErr *LexicalError) Result {\n\tprefix := string([]rune(input)[:lexErr.Pos-1])\n\tread, _ := Tokenize(prefix)\n\tread = read[:len(read)-1] // drop the \"$\" of the prefix\n\tremaining := append(kinds(read), string(lexErr.Char), EndMarker)\n\tstep := Step{\n\t\tNumber: 1,\n\t\tStack:  start,\n\t\tInput:  remaining,\n\t\tAction: ErrorPrefix + \" léxico: \" + lexErr.Detail(),\n\t}\n\treturn Result{\n\t\tMessage: fmt.Sprintf(messageRejected, lexErr.Error()),\n\t\tTokens:  read,\n\t\tSteps:   []Step{step},\n\t}\n}"
+  },
+  {
+   "id": "func:ll1.matchAction",
+   "label": "matchAction",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/parser.go",
+   "line": 137,
+   "doc": "matchAction reads \"Casa 'id' (soma)\", or just \"Casa '+'\" when the lexeme is the terminal itself.",
+   "signature": "func matchAction(token Token) string",
+   "code": "func matchAction(token Token) string {\n\tif token.Lexeme == token.Kind {\n\t\treturn fmt.Sprintf(\"Casa '%s'\", token.Kind)\n\t}\n\treturn fmt.Sprintf(\"Casa '%s' (%s)\", token.Kind, token.Lexeme)\n}"
+  },
+  {
+   "id": "func:ll1.mutate",
+   "label": "mutate",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/generator.go",
+   "line": 62,
+   "doc": "mutate applies one random kind of damage to a copy of the lexemes.",
+   "signature": "func mutate(lexemes []string, rng *rand.Rand) []string",
+   "code": "func mutate(lexemes []string, rng *rand.Rand) []string {\n\tconst (\n\t\tdropToken = iota\n\t\tduplicateOperator\n\t\tunbalancedParenthesis\n\t\tillegalCharacter\n\t\tmutationCount\n\t)\n\tswitch rng.Intn(mutationCount) {\n\tcase dropToken:\n\t\ti := rng.Intn(len(lexemes))\n\t\treturn append(append([]string{}, lexemes[:i]...), lexemes[i+1:]...)\n\tcase duplicateOperator:\n\t\tvar operatorIndexes []int\n\t\tfor i, lexeme := range lexemes {\n\t\t\tif strings.Contains(operators, lexeme) {\n\t\t\t\toperatorIndexes = append(operatorIndexes, i)\n\t\t\t}\n\t\t}\n\t\tif len(operatorIndexes) \u003e 0 {\n\t\t\ti := operatorIndexes[rng.Intn(len(operatorIndexes))]\n\t\t\treturn insertAt(lexemes, i, lexemes[i])\n\t\t}\n\t\treturn insertAt(lexemes, rng.Intn(len(lexemes)+1), \"+\")\n\tcase unbalancedParenthesis:\n\t\tparenthesis := []string{\"(\", \")\"}[rng.Intn(2)]\n\t\treturn insertAt(lexemes, rng.Intn(len(lexemes)+1), parenthesis)\n\tdefault:\n\t\tchar := illegalCharacters[rng.Intn(len(illegalCharacters))]\n\t\treturn insertAt(lexemes, rng.Intn(len(lexemes)+1), char)\n\t}\n}"
+  },
+  {
+   "id": "func:ll1.reject",
+   "label": "reject",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/parser.go",
+   "line": 86,
+   "signature": "func reject(result Result, step Step, reason string) Result",
+   "code": "func reject(result Result, step Step, reason string) Result {\n\tstep.Action = ErrorPrefix + \": \" + reason\n\tresult.Steps = append(result.Steps, step)\n\tresult.Message = fmt.Sprintf(messageRejected, reason)\n\treturn result\n}"
+  },
+  {
+   "id": "func:ll1.symbolSet.addAll",
+   "label": "symbolSet.addAll",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/sets.go",
+   "line": 7,
+   "doc": "addAll adds every symbol of other except skip and reports whether s grew.",
+   "signature": "func (s symbolSet) addAll(other symbolSet, skip string) bool",
+   "code": "func (s symbolSet) addAll(other symbolSet, skip string) bool {\n\tgrew := false\n\tfor symbol := range other {\n\t\tif symbol != skip \u0026\u0026 !s[symbol] {\n\t\t\ts[symbol] = true\n\t\t\tgrew = true\n\t\t}\n\t}\n\treturn grew\n}"
+  },
+  {
+   "id": "func:ll1.unexpected",
+   "label": "unexpected",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/parser.go",
+   "line": 128,
+   "signature": "func unexpected(token Token) string",
+   "code": "func unexpected(token Token) string {\n\tif token.Kind == EndMarker {\n\t\treturn \"fim da entrada inesperado\"\n\t}\n\treturn fmt.Sprintf(\"token '%s' inesperado na posição %d\", token.Lexeme, token.Pos)\n}"
+  },
+  {
+   "id": "pkg:cmd/analisador",
+   "label": "cmd/analisador",
+   "kind": "package",
+   "package": "cmd/analisador",
+   "doc": "Command analisador is the terminal front end of the LL(1) predictive table-driven parser: it shows the grammar, the FIRST and FOLLOW sets and the parsing table, and traces the recognition of typed or generated sentences.",
+   "signature": "package main"
+  },
+  {
+   "id": "pkg:cmd/codegraph",
+   "label": "cmd/codegraph",
+   "kind": "package",
+   "package": "cmd/codegraph",
+   "doc": "Command codegraph reads the Go source of this module and writes a JSON graph (packages, files, types, functions, methods and the edges between them) that the /graph page draws.",
+   "signature": "package main"
+  },
+  {
+   "id": "pkg:cmd/wasm",
+   "label": "cmd/wasm",
+   "kind": "package",
+   "package": "cmd/wasm",
+   "doc": "Command wasm exposes the ll1 package to the browser as globalThis.ll1. Every function returns a JSON string, except generate and generateInvalid, which return the sentence itself.",
+   "signature": "package main"
+  },
+  {
+   "id": "pkg:ll1",
+   "label": "ll1",
+   "kind": "package",
+   "package": "ll1",
+   "doc": "Package ll1 implements a table-driven (non-recursive) predictive LL(1) parser for a fixed arithmetic expression grammar: FIRST and FOLLOW sets, the parsing table, a lexer, the stack parser and a sentence generator.",
+   "signature": "package ll1"
+  },
+  {
+   "id": "type:cmd/analisador.app",
+   "label": "app",
+   "kind": "type",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 44,
+   "doc": "app holds the parser state and the terminal streams of one session.",
+   "signature": "type app struct",
+   "code": "type app struct {\n\tgrammar *ll1.Grammar\n\ttable   *ll1.Table\n\trng     *rand.Rand\n\tin      *bufio.Scanner\n\tout     io.Writer\n\tcolors  palette\n}"
+  },
+  {
+   "id": "type:cmd/analisador.cellStyle",
+   "label": "cellStyle",
+   "kind": "type",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/render.go",
+   "line": 46,
+   "doc": "cellStyle picks a style for a body cell; \"\" means plain.",
+   "signature": "type cellStyle func(row, column int, text string) string",
+   "code": "type cellStyle func(row, column int, text string) string"
+  },
+  {
+   "id": "type:cmd/analisador.menuOption",
+   "label": "menuOption",
+   "kind": "type",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 26,
+   "doc": "menuOption is one entry of the main menu.",
+   "signature": "type menuOption struct",
+   "code": "type menuOption struct {\n\tkey    string\n\tlabel  string\n\taction func(a *app) bool // false when input ended\n}"
+  },
+  {
+   "id": "type:cmd/analisador.palette",
+   "label": "palette",
+   "kind": "type",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/render.go",
+   "line": 19,
+   "doc": "palette wraps text in ANSI styles, or leaves it plain when disabled.",
+   "signature": "type palette struct",
+   "code": "type palette struct {\n\tenabled bool\n}"
+  },
+  {
+   "id": "type:cmd/codegraph.Edge",
+   "label": "Edge",
+   "kind": "type",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 67,
+   "doc": "Edge is a directed relation between two nodes.",
+   "signature": "type Edge struct",
+   "code": "type Edge struct {\n\tFrom string `json:\"from\"`\n\tTo   string `json:\"to\"`\n\tKind string `json:\"kind\"`\n}"
+  },
+  {
+   "id": "type:cmd/codegraph.Graph",
+   "label": "Graph",
+   "kind": "type",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 74,
+   "doc": "Graph is the whole JSON document.",
+   "signature": "type Graph struct",
+   "code": "type Graph struct {\n\tModule string `json:\"module\"`\n\tNodes  []Node `json:\"nodes\"`\n\tEdges  []Edge `json:\"edges\"`\n}"
+  },
+  {
+   "id": "type:cmd/codegraph.Node",
+   "label": "Node",
+   "kind": "type",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 54,
+   "doc": "Node is one package, file, type, function or method.",
+   "signature": "type Node struct",
+   "code": "type Node struct {\n\tID        string `json:\"id\"`\n\tLabel     string `json:\"label\"`\n\tKind      string `json:\"kind\"`\n\tPackage   string `json:\"package\"`\n\tFile      string `json:\"file,omitempty\"`\n\tLine      int    `json:\"line,omitempty\"`\n\tDoc       string `json:\"doc,omitempty\"`\n\tSignature string `json:\"signature,omitempty\"`\n\tCode      string `json:\"code,omitempty\"`\n}"
+  },
+  {
+   "id": "type:cmd/codegraph.builder",
+   "label": "builder",
+   "kind": "type",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 89,
+   "signature": "type builder struct",
+   "code": "type builder struct {\n\tmodule string\n\tfset   *token.FileSet\n\tnodes  map[string]*Node\n\tedges  map[Edge]bool\n\n\tfiles         []*parsedFile\n\tfuncsByDir    map[string]map[string]string // directory -\u003e function name -\u003e node id\n\tmethodsByName map[string][]string          // method name -\u003e node ids\n\tdeclIDs       map[*ast.FuncDecl]string     // declaration -\u003e node id\n\tsources       map[string][]string          // file path -\u003e lines\n}"
+  },
+  {
+   "id": "type:cmd/codegraph.parsedFile",
+   "label": "parsedFile",
+   "kind": "type",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 81,
+   "doc": "parsedFile keeps what the second pass needs to resolve calls.",
+   "signature": "type parsedFile struct",
+   "code": "type parsedFile struct {\n\tdir     string\n\trel     string\n\tfile    *ast.File\n\timports map[string]string // local import name -\u003e module directory (\"\" for outside the module)\n\tdecls   []*ast.FuncDecl\n}"
+  },
+  {
+   "id": "type:cmd/wasm.cellRefJSON",
+   "label": "cellRefJSON",
+   "kind": "type",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 59,
+   "signature": "type cellRefJSON struct",
+   "code": "type cellRefJSON struct {\n\tNonTerminal string `json:\"nonTerminal\"`\n\tColumn      string `json:\"column\"`\n}"
+  },
+  {
+   "id": "type:cmd/wasm.grammarJSON",
+   "label": "grammarJSON",
+   "kind": "type",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 28,
+   "signature": "type grammarJSON struct",
+   "code": "type grammarJSON struct {\n\tStart        string           `json:\"start\"`\n\tProductions  []productionJSON `json:\"productions\"`\n\tGrouped      []string         `json:\"grouped\"`\n\tTerminals    []string         `json:\"terminals\"`\n\tNonTerminals []string         `json:\"nonTerminals\"`\n}"
+  },
+  {
+   "id": "type:cmd/wasm.productionJSON",
+   "label": "productionJSON",
+   "kind": "type",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 21,
+   "signature": "type productionJSON struct",
+   "code": "type productionJSON struct {\n\tNumber int      `json:\"number\"`\n\tHead   string   `json:\"head\"`\n\tBody   []string `json:\"body\"`\n\tText   string   `json:\"text\"`\n}"
+  },
+  {
+   "id": "type:cmd/wasm.resultJSON",
+   "label": "resultJSON",
+   "kind": "type",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 78,
+   "signature": "type resultJSON struct",
+   "code": "type resultJSON struct {\n\tAccepted bool        `json:\"accepted\"`\n\tMessage  string      `json:\"message\"`\n\tTokens   []tokenJSON `json:\"tokens\"`\n\tSteps    []stepJSON  `json:\"steps\"`\n}"
+  },
+  {
+   "id": "type:cmd/wasm.setsRowJSON",
+   "label": "setsRowJSON",
+   "kind": "type",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 36,
+   "signature": "type setsRowJSON struct",
+   "code": "type setsRowJSON struct {\n\tNonTerminal string   `json:\"nonTerminal\"`\n\tFirst       []string `json:\"first\"`\n\tFollow      []string `json:\"follow\"`\n}"
+  },
+  {
+   "id": "type:cmd/wasm.stepJSON",
+   "label": "stepJSON",
+   "kind": "type",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 64,
+   "signature": "type stepJSON struct",
+   "code": "type stepJSON struct {\n\tNumber int          `json:\"number\"`\n\tStack  []string     `json:\"stack\"`\n\tInput  []string     `json:\"input\"`\n\tAction string       `json:\"action\"`\n\tCell   *cellRefJSON `json:\"cell\"` // table cell consulted by this step, if any\n}"
+  },
+  {
+   "id": "type:cmd/wasm.tableCellJSON",
+   "label": "tableCellJSON",
+   "kind": "type",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 42,
+   "signature": "type tableCellJSON struct",
+   "code": "type tableCellJSON struct {\n\tColumn string `json:\"column\"`\n\tNumber int    `json:\"number\"` // 0 means an empty (error) cell\n\tText   string `json:\"text\"`\n}"
+  },
+  {
+   "id": "type:cmd/wasm.tableJSON",
+   "label": "tableJSON",
+   "kind": "type",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 53,
+   "signature": "type tableJSON struct",
+   "code": "type tableJSON struct {\n\tColumns   []string       `json:\"columns\"`\n\tRows      []tableRowJSON `json:\"rows\"`\n\tConflicts []string       `json:\"conflicts\"`\n}"
+  },
+  {
+   "id": "type:cmd/wasm.tableRowJSON",
+   "label": "tableRowJSON",
+   "kind": "type",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 48,
+   "signature": "type tableRowJSON struct",
+   "code": "type tableRowJSON struct {\n\tNonTerminal string          `json:\"nonTerminal\"`\n\tCells       []tableCellJSON `json:\"cells\"`\n}"
+  },
+  {
+   "id": "type:cmd/wasm.tokenJSON",
+   "label": "tokenJSON",
+   "kind": "type",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 72,
+   "signature": "type tokenJSON struct",
+   "code": "type tokenJSON struct {\n\tKind   string `json:\"kind\"`\n\tLexeme string `json:\"lexeme\"`\n\tPos    int    `json:\"pos\"`\n}"
+  },
+  {
+   "id": "type:ll1.Grammar",
+   "label": "Grammar",
+   "kind": "type",
+   "package": "ll1",
+   "file": "ll1/grammar.go",
+   "line": 41,
+   "doc": "Grammar is a context-free grammar with symbols kept in display order.",
+   "signature": "type Grammar struct",
+   "code": "type Grammar struct {\n\tStart        string\n\tNonTerminals []string // display order: E E' T T' F\n\tTerminals    []string // id num + - * / ( )   (no ε, no $)\n\tProductions  []Production\n}"
+  },
+  {
+   "id": "type:ll1.LexicalError",
+   "label": "LexicalError",
+   "kind": "type",
+   "package": "ll1",
+   "file": "ll1/lexer.go",
+   "line": 13,
+   "doc": "LexicalError reports a character that does not start any token.",
+   "signature": "type LexicalError struct",
+   "code": "type LexicalError struct {\n\tChar rune\n\tPos  int // 1-based column in the input\n}"
+  },
+  {
+   "id": "type:ll1.Production",
+   "label": "Production",
+   "kind": "type",
+   "package": "ll1",
+   "file": "ll1/grammar.go",
+   "line": 24,
+   "doc": "Production is one numbered grammar rule.",
+   "signature": "type Production struct",
+   "code": "type Production struct {\n\tNumber int      // 1-based\n\tHead   string   // non-terminal on the left side\n\tBody   []string // []string{Epsilon} for the empty production\n}"
+  },
+  {
+   "id": "type:ll1.Result",
+   "label": "Result",
+   "kind": "type",
+   "package": "ll1",
+   "file": "ll1/parser.go",
+   "line": 14,
+   "doc": "Result is the outcome of parsing one sentence.",
+   "signature": "type Result struct",
+   "code": "type Result struct {\n\tAccepted bool\n\tMessage  string // Portuguese final message\n\tTokens   []Token\n\tSteps    []Step\n}"
+  },
+  {
+   "id": "type:ll1.Step",
+   "label": "Step",
+   "kind": "type",
+   "package": "ll1",
+   "file": "ll1/parser.go",
+   "line": 6,
+   "doc": "Step is one row of the parsing trace.",
+   "signature": "type Step struct",
+   "code": "type Step struct {\n\tNumber int\n\tStack  []string // bottom first, so the top is the last element; starts as [\"$\", \"E\"]\n\tInput  []string // remaining token kinds, current first, ends with \"$\"\n\tAction string   // Portuguese, e.g. \"E -\u003e T E'\", \"Casa 'id' (soma)\", \"Aceita\", \"Erro: ...\"\n}"
+  },
+  {
+   "id": "type:ll1.Table",
+   "label": "Table",
+   "kind": "type",
+   "package": "ll1",
+   "file": "ll1/table.go",
+   "line": 6,
+   "doc": "Table is the LL(1) parsing table M[non-terminal, terminal].",
+   "signature": "type Table struct",
+   "code": "type Table struct {\n\tGrammar   *Grammar\n\tColumns   []string                  // Terminals + \"$\"\n\tCells     map[string]map[string]int // non-terminal -\u003e column -\u003e production Number (missing = error)\n\tConflicts []string                  // empty for an LL(1) grammar\n}"
+  },
+  {
+   "id": "type:ll1.Token",
+   "label": "Token",
+   "kind": "type",
+   "package": "ll1",
+   "file": "ll1/lexer.go",
+   "line": 6,
+   "doc": "Token is one lexical unit of the input.",
+   "signature": "type Token struct",
+   "code": "type Token struct {\n\tKind   string // terminal name (\"id\", \"num\", \"+\", ...) or \"$\"\n\tLexeme string // text as typed (\"soma\", \"42\", \"+\"); \"$\" for the end\n\tPos    int    // 1-based column in the input\n}"
+  },
+  {
+   "id": "type:ll1.symbolSet",
+   "label": "symbolSet",
+   "kind": "type",
+   "package": "ll1",
+   "file": "ll1/sets.go",
+   "line": 4,
+   "doc": "symbolSet is an unordered set of grammar symbols used while iterating.",
+   "signature": "type symbolSet map[string]bool",
+   "code": "type symbolSet map[string]bool"
+  }
+ ],
+ "edges": [
+  {
+   "from": "file:cmd/analisador/console_other.go",
+   "to": "func:cmd/analisador.prepareConsole",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/console_windows.go",
+   "to": "func:cmd/analisador.prepareConsole:20",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.app.analyze",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.app.generateInvalid",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.app.generateValid",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.app.print",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.app.printMenu",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.app.productionList",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.app.readLine",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.app.section",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.app.showGrammar",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.app.showSets",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.app.showTable",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.app.typeSentence",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.app.waitForEnter",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.findOption",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.main",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.run",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.setText",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "type:cmd/analisador.app",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "type:cmd/analisador.menuOption",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/render.go",
+   "to": "func:cmd/analisador.box",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/render.go",
+   "to": "func:cmd/analisador.pad",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/render.go",
+   "to": "func:cmd/analisador.palette.paint",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/render.go",
+   "to": "func:cmd/analisador.table",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/render.go",
+   "to": "type:cmd/analisador.cellStyle",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/render.go",
+   "to": "type:cmd/analisador.palette",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.buildGraph",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.builder.addEdge",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.builder.collectCalls",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.builder.declare",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.builder.declareFunc",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.builder.declareImport",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.builder.declareTypes",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.builder.link",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.builder.packageLabel",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.builder.parseTree",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.builder.resolveSelector",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.builder.result",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.builder.snippet",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.builder.uniqueID",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.firstParagraph",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.importSummary",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.main",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.packageID",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.printNode",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.readModulePath",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.receiverName",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.signature",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.typeSignature",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "type:cmd/codegraph.Edge",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "type:cmd/codegraph.Graph",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "type:cmd/codegraph.Node",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "type:cmd/codegraph.builder",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
+   "to": "type:cmd/codegraph.parsedFile",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "func:cmd/wasm.consultedCell",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "func:cmd/wasm.grammarValue",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "func:cmd/wasm.main",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "func:cmd/wasm.parseValue",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "func:cmd/wasm.setsValue",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "func:cmd/wasm.tableValue",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "func:cmd/wasm.toJSON",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "type:cmd/wasm.cellRefJSON",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "type:cmd/wasm.grammarJSON",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "type:cmd/wasm.productionJSON",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "type:cmd/wasm.resultJSON",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "type:cmd/wasm.setsRowJSON",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "type:cmd/wasm.stepJSON",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "type:cmd/wasm.tableCellJSON",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "type:cmd/wasm.tableJSON",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "type:cmd/wasm.tableRowJSON",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "type:cmd/wasm.tokenJSON",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/generator.go",
+   "to": "func:ll1.Generate",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/generator.go",
+   "to": "func:ll1.GenerateInvalid",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/generator.go",
+   "to": "func:ll1.Grammar.productionHeights",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/generator.go",
+   "to": "func:ll1.chooseProduction",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/generator.go",
+   "to": "func:ll1.insertAt",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/generator.go",
+   "to": "func:ll1.lexemeFor",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/generator.go",
+   "to": "func:ll1.mutate",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/grammar.go",
+   "to": "func:ll1.Default",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/grammar.go",
+   "to": "func:ll1.Grammar.IsNonTerminal",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/grammar.go",
+   "to": "func:ll1.Grammar.IsTerminal",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/grammar.go",
+   "to": "func:ll1.Grammar.ProductionsOf",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/grammar.go",
+   "to": "func:ll1.Grammar.String",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/grammar.go",
+   "to": "func:ll1.Production.IsEmpty",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/grammar.go",
+   "to": "func:ll1.Production.String",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/grammar.go",
+   "to": "func:ll1.contains",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/grammar.go",
+   "to": "type:ll1.Grammar",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/grammar.go",
+   "to": "type:ll1.Production",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/lexer.go",
+   "to": "func:ll1.LexicalError.Detail",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/lexer.go",
+   "to": "func:ll1.LexicalError.Error",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/lexer.go",
+   "to": "func:ll1.Tokenize",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/lexer.go",
+   "to": "func:ll1.isDigit",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/lexer.go",
+   "to": "func:ll1.isLetter",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/lexer.go",
+   "to": "func:ll1.isOperator",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/lexer.go",
+   "to": "func:ll1.isSpace",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/lexer.go",
+   "to": "type:ll1.LexicalError",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/lexer.go",
+   "to": "type:ll1.Token",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/parser.go",
+   "to": "func:ll1.Parse",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/parser.go",
+   "to": "func:ll1.describeSymbol",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/parser.go",
+   "to": "func:ll1.kinds",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/parser.go",
+   "to": "func:ll1.lexicalFailure",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/parser.go",
+   "to": "func:ll1.matchAction",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/parser.go",
+   "to": "func:ll1.reject",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/parser.go",
+   "to": "func:ll1.unexpected",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/parser.go",
+   "to": "type:ll1.Result",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/parser.go",
+   "to": "type:ll1.Step",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/sets.go",
+   "to": "func:ll1.Grammar.First",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/sets.go",
+   "to": "func:ll1.Grammar.FirstOfSequence",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/sets.go",
+   "to": "func:ll1.Grammar.Follow",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/sets.go",
+   "to": "func:ll1.Grammar.firstOfSequence",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/sets.go",
+   "to": "func:ll1.Grammar.firstSets",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/sets.go",
+   "to": "func:ll1.Grammar.followSets",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/sets.go",
+   "to": "func:ll1.Grammar.ordered",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/sets.go",
+   "to": "func:ll1.symbolSet.addAll",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/sets.go",
+   "to": "type:ll1.symbolSet",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/table.go",
+   "to": "func:ll1.BuildTable",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/table.go",
+   "to": "func:ll1.Table.Production",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/table.go",
+   "to": "func:ll1.Table.place",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/table.go",
+   "to": "type:ll1.Table",
+   "kind": "contains"
+  },
+  {
+   "from": "func:cmd/analisador.app.analyze",
+   "to": "func:cmd/analisador.app.print",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.analyze",
+   "to": "func:cmd/analisador.palette.paint",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.analyze",
+   "to": "func:cmd/analisador.table",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.analyze",
+   "to": "func:ll1.Parse",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.generateInvalid",
+   "to": "func:cmd/analisador.app.analyze",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.generateInvalid",
+   "to": "func:cmd/analisador.app.section",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.generateInvalid",
+   "to": "func:ll1.GenerateInvalid",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.generateValid",
+   "to": "func:cmd/analisador.app.analyze",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.generateValid",
+   "to": "func:cmd/analisador.app.section",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.generateValid",
+   "to": "func:ll1.Generate",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.printMenu",
+   "to": "func:cmd/analisador.app.print",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.printMenu",
+   "to": "func:cmd/analisador.palette.paint",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.readLine",
+   "to": "func:cmd/analisador.app.print",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.section",
+   "to": "func:cmd/analisador.app.print",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.section",
+   "to": "func:cmd/analisador.box",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.showGrammar",
+   "to": "func:cmd/analisador.app.print",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.showGrammar",
+   "to": "func:cmd/analisador.app.productionList",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.showGrammar",
+   "to": "func:cmd/analisador.app.section",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.showSets",
+   "to": "func:cmd/analisador.app.print",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.showSets",
+   "to": "func:cmd/analisador.app.section",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.showSets",
+   "to": "func:cmd/analisador.setText",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.showSets",
+   "to": "func:cmd/analisador.table",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.showSets",
+   "to": "func:ll1.Grammar.First",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.showSets",
+   "to": "func:ll1.Grammar.Follow",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.showTable",
+   "to": "func:cmd/analisador.app.print",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.showTable",
+   "to": "func:cmd/analisador.app.productionList",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.showTable",
+   "to": "func:cmd/analisador.app.section",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.showTable",
+   "to": "func:cmd/analisador.palette.paint",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.showTable",
+   "to": "func:cmd/analisador.table",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.typeSentence",
+   "to": "func:cmd/analisador.app.analyze",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.typeSentence",
+   "to": "func:cmd/analisador.app.readLine",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.typeSentence",
+   "to": "func:cmd/analisador.app.section",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.waitForEnter",
+   "to": "func:cmd/analisador.app.readLine",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.waitForEnter",
+   "to": "func:cmd/analisador.palette.paint",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.box",
+   "to": "func:cmd/analisador.pad",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.box",
+   "to": "func:cmd/analisador.palette.paint",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.main",
+   "to": "func:cmd/analisador.prepareConsole:20",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.main",
+   "to": "func:cmd/analisador.run",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.run",
+   "to": "func:cmd/analisador.app.print",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.run",
+   "to": "func:cmd/analisador.app.printMenu",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.run",
+   "to": "func:cmd/analisador.app.readLine",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.run",
+   "to": "func:cmd/analisador.app.waitForEnter",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.run",
+   "to": "func:cmd/analisador.box",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.run",
+   "to": "func:cmd/analisador.findOption",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.run",
+   "to": "func:cmd/analisador.palette.paint",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.run",
+   "to": "func:ll1.BuildTable",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.run",
+   "to": "func:ll1.Default",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.table",
+   "to": "func:cmd/analisador.pad",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.table",
+   "to": "func:cmd/analisador.palette.paint",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.buildGraph",
+   "to": "func:cmd/codegraph.builder.declare",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.buildGraph",
+   "to": "func:cmd/codegraph.builder.link",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.buildGraph",
+   "to": "func:cmd/codegraph.builder.parseTree",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.buildGraph",
+   "to": "func:cmd/codegraph.builder.result",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.buildGraph",
+   "to": "func:cmd/codegraph.readModulePath",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.collectCalls",
+   "to": "func:cmd/codegraph.builder.addEdge",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.collectCalls",
+   "to": "func:cmd/codegraph.builder.resolveSelector",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declare",
+   "to": "func:cmd/codegraph.builder.addEdge",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declare",
+   "to": "func:cmd/codegraph.builder.declareFunc",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declare",
+   "to": "func:cmd/codegraph.builder.declareImport",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declare",
+   "to": "func:cmd/codegraph.builder.declareTypes",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declare",
+   "to": "func:cmd/codegraph.builder.packageLabel",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declare",
+   "to": "func:cmd/codegraph.firstParagraph",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declare",
+   "to": "func:cmd/codegraph.importSummary",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declare",
+   "to": "func:cmd/codegraph.packageID",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declareFunc",
+   "to": "func:cmd/codegraph.builder.addEdge",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declareFunc",
+   "to": "func:cmd/codegraph.builder.snippet",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declareFunc",
+   "to": "func:cmd/codegraph.builder.uniqueID",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declareFunc",
+   "to": "func:cmd/codegraph.firstParagraph",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declareFunc",
+   "to": "func:cmd/codegraph.receiverName",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declareFunc",
+   "to": "func:cmd/codegraph.signature",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declareImport",
+   "to": "func:cmd/codegraph.builder.addEdge",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declareImport",
+   "to": "func:cmd/codegraph.packageID",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declareTypes",
+   "to": "func:cmd/codegraph.builder.addEdge",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declareTypes",
+   "to": "func:cmd/codegraph.builder.snippet",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declareTypes",
+   "to": "func:cmd/codegraph.builder.uniqueID",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declareTypes",
+   "to": "func:cmd/codegraph.firstParagraph",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.declareTypes",
+   "to": "func:cmd/codegraph.typeSignature",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.builder.link",
+   "to": "func:cmd/codegraph.builder.collectCalls",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.main",
+   "to": "func:cmd/codegraph.buildGraph",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.signature",
+   "to": "func:cmd/codegraph.printNode",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.typeSignature",
+   "to": "func:cmd/codegraph.printNode",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.consultedCell",
+   "to": "func:ll1.Grammar.IsNonTerminal",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.consultedCell",
+   "to": "func:ll1.Table.Production",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.grammarValue",
+   "to": "func:cmd/wasm.toJSON",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.main",
+   "to": "func:cmd/wasm.grammarValue",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.main",
+   "to": "func:cmd/wasm.parseValue",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.main",
+   "to": "func:cmd/wasm.setsValue",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.main",
+   "to": "func:cmd/wasm.tableValue",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.main",
+   "to": "func:ll1.Generate",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.main",
+   "to": "func:ll1.GenerateInvalid",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.parseValue",
+   "to": "func:cmd/wasm.consultedCell",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.parseValue",
+   "to": "func:cmd/wasm.toJSON",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.parseValue",
+   "to": "func:ll1.Parse",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.setsValue",
+   "to": "func:cmd/wasm.toJSON",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.setsValue",
+   "to": "func:ll1.Grammar.First",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.setsValue",
+   "to": "func:ll1.Grammar.Follow",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.tableValue",
+   "to": "func:cmd/wasm.toJSON",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.tableValue",
+   "to": "func:ll1.Table.Production",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.toJSON",
+   "to": "func:ll1.LexicalError.Error",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.BuildTable",
+   "to": "func:ll1.Grammar.firstOfSequence",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.BuildTable",
+   "to": "func:ll1.Grammar.firstSets",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.BuildTable",
+   "to": "func:ll1.Grammar.followSets",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.BuildTable",
+   "to": "func:ll1.Table.place",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Generate",
+   "to": "func:ll1.Grammar.IsNonTerminal",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Generate",
+   "to": "func:ll1.Grammar.ProductionsOf",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Generate",
+   "to": "func:ll1.Grammar.productionHeights",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Generate",
+   "to": "func:ll1.Production.IsEmpty",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Generate",
+   "to": "func:ll1.chooseProduction",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Generate",
+   "to": "func:ll1.lexemeFor",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.GenerateInvalid",
+   "to": "func:ll1.BuildTable",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.GenerateInvalid",
+   "to": "func:ll1.Generate",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.GenerateInvalid",
+   "to": "func:ll1.Parse",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.GenerateInvalid",
+   "to": "func:ll1.mutate",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.First",
+   "to": "func:ll1.Grammar.firstSets",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.First",
+   "to": "func:ll1.Grammar.ordered",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.FirstOfSequence",
+   "to": "func:ll1.Grammar.firstOfSequence",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.FirstOfSequence",
+   "to": "func:ll1.Grammar.firstSets",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.FirstOfSequence",
+   "to": "func:ll1.Grammar.ordered",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.Follow",
+   "to": "func:ll1.Grammar.firstSets",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.Follow",
+   "to": "func:ll1.Grammar.followSets",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.Follow",
+   "to": "func:ll1.Grammar.ordered",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.IsNonTerminal",
+   "to": "func:ll1.contains",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.IsTerminal",
+   "to": "func:ll1.contains",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.String",
+   "to": "func:ll1.Grammar.ProductionsOf",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.firstOfSequence",
+   "to": "func:ll1.Grammar.IsNonTerminal",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.firstOfSequence",
+   "to": "func:ll1.symbolSet.addAll",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.firstSets",
+   "to": "func:ll1.Grammar.firstOfSequence",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.firstSets",
+   "to": "func:ll1.symbolSet.addAll",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.followSets",
+   "to": "func:ll1.Grammar.IsNonTerminal",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.followSets",
+   "to": "func:ll1.Grammar.firstOfSequence",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.followSets",
+   "to": "func:ll1.symbolSet.addAll",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.LexicalError.Error",
+   "to": "func:ll1.LexicalError.Detail",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Parse",
+   "to": "func:ll1.Grammar.IsNonTerminal",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Parse",
+   "to": "func:ll1.Production.IsEmpty",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Parse",
+   "to": "func:ll1.Table.Production",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Parse",
+   "to": "func:ll1.Tokenize",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Parse",
+   "to": "func:ll1.describeSymbol",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Parse",
+   "to": "func:ll1.kinds",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Parse",
+   "to": "func:ll1.lexicalFailure",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Parse",
+   "to": "func:ll1.matchAction",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Parse",
+   "to": "func:ll1.reject",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Parse",
+   "to": "func:ll1.unexpected",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Tokenize",
+   "to": "func:ll1.isDigit",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Tokenize",
+   "to": "func:ll1.isLetter",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Tokenize",
+   "to": "func:ll1.isOperator",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Tokenize",
+   "to": "func:ll1.isSpace",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.lexicalFailure",
+   "to": "func:ll1.LexicalError.Detail",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.lexicalFailure",
+   "to": "func:ll1.LexicalError.Error",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.lexicalFailure",
+   "to": "func:ll1.Tokenize",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.lexicalFailure",
+   "to": "func:ll1.kinds",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.mutate",
+   "to": "func:ll1.insertAt",
+   "kind": "calls"
+  },
+  {
+   "from": "pkg:cmd/analisador",
+   "to": "file:cmd/analisador/console_other.go",
+   "kind": "contains"
+  },
+  {
+   "from": "pkg:cmd/analisador",
+   "to": "file:cmd/analisador/console_windows.go",
+   "kind": "contains"
+  },
+  {
+   "from": "pkg:cmd/analisador",
+   "to": "file:cmd/analisador/main.go",
+   "kind": "contains"
+  },
+  {
+   "from": "pkg:cmd/analisador",
+   "to": "file:cmd/analisador/render.go",
+   "kind": "contains"
+  },
+  {
+   "from": "pkg:cmd/analisador",
+   "to": "pkg:ll1",
+   "kind": "imports"
+  },
+  {
+   "from": "pkg:cmd/codegraph",
+   "to": "file:cmd/codegraph/main.go",
+   "kind": "contains"
+  },
+  {
+   "from": "pkg:cmd/wasm",
+   "to": "file:cmd/wasm/main.go",
+   "kind": "contains"
+  },
+  {
+   "from": "pkg:cmd/wasm",
+   "to": "pkg:ll1",
+   "kind": "imports"
+  },
+  {
+   "from": "pkg:ll1",
+   "to": "file:ll1/generator.go",
+   "kind": "contains"
+  },
+  {
+   "from": "pkg:ll1",
+   "to": "file:ll1/grammar.go",
+   "kind": "contains"
+  },
+  {
+   "from": "pkg:ll1",
+   "to": "file:ll1/lexer.go",
+   "kind": "contains"
+  },
+  {
+   "from": "pkg:ll1",
+   "to": "file:ll1/parser.go",
+   "kind": "contains"
+  },
+  {
+   "from": "pkg:ll1",
+   "to": "file:ll1/sets.go",
+   "kind": "contains"
+  },
+  {
+   "from": "pkg:ll1",
+   "to": "file:ll1/table.go",
+   "kind": "contains"
+  },
+  {
+   "from": "type:cmd/analisador.app",
+   "to": "func:cmd/analisador.app.analyze",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/analisador.app",
+   "to": "func:cmd/analisador.app.generateInvalid",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/analisador.app",
+   "to": "func:cmd/analisador.app.generateValid",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/analisador.app",
+   "to": "func:cmd/analisador.app.print",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/analisador.app",
+   "to": "func:cmd/analisador.app.printMenu",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/analisador.app",
+   "to": "func:cmd/analisador.app.productionList",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/analisador.app",
+   "to": "func:cmd/analisador.app.readLine",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/analisador.app",
+   "to": "func:cmd/analisador.app.section",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/analisador.app",
+   "to": "func:cmd/analisador.app.showGrammar",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/analisador.app",
+   "to": "func:cmd/analisador.app.showSets",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/analisador.app",
+   "to": "func:cmd/analisador.app.showTable",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/analisador.app",
+   "to": "func:cmd/analisador.app.typeSentence",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/analisador.app",
+   "to": "func:cmd/analisador.app.waitForEnter",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/analisador.palette",
+   "to": "func:cmd/analisador.palette.paint",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/codegraph.builder",
+   "to": "func:cmd/codegraph.builder.addEdge",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/codegraph.builder",
+   "to": "func:cmd/codegraph.builder.collectCalls",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/codegraph.builder",
+   "to": "func:cmd/codegraph.builder.declare",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/codegraph.builder",
+   "to": "func:cmd/codegraph.builder.declareFunc",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/codegraph.builder",
+   "to": "func:cmd/codegraph.builder.declareImport",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/codegraph.builder",
+   "to": "func:cmd/codegraph.builder.declareTypes",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/codegraph.builder",
+   "to": "func:cmd/codegraph.builder.link",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/codegraph.builder",
+   "to": "func:cmd/codegraph.builder.packageLabel",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/codegraph.builder",
+   "to": "func:cmd/codegraph.builder.parseTree",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/codegraph.builder",
+   "to": "func:cmd/codegraph.builder.resolveSelector",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/codegraph.builder",
+   "to": "func:cmd/codegraph.builder.result",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/codegraph.builder",
+   "to": "func:cmd/codegraph.builder.snippet",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/codegraph.builder",
+   "to": "func:cmd/codegraph.builder.uniqueID",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Grammar",
+   "to": "func:ll1.Grammar.First",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Grammar",
+   "to": "func:ll1.Grammar.FirstOfSequence",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Grammar",
+   "to": "func:ll1.Grammar.Follow",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Grammar",
+   "to": "func:ll1.Grammar.IsNonTerminal",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Grammar",
+   "to": "func:ll1.Grammar.IsTerminal",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Grammar",
+   "to": "func:ll1.Grammar.ProductionsOf",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Grammar",
+   "to": "func:ll1.Grammar.String",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Grammar",
+   "to": "func:ll1.Grammar.firstOfSequence",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Grammar",
+   "to": "func:ll1.Grammar.firstSets",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Grammar",
+   "to": "func:ll1.Grammar.followSets",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Grammar",
+   "to": "func:ll1.Grammar.ordered",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Grammar",
+   "to": "func:ll1.Grammar.productionHeights",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.LexicalError",
+   "to": "func:ll1.LexicalError.Detail",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.LexicalError",
+   "to": "func:ll1.LexicalError.Error",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Production",
+   "to": "func:ll1.Production.IsEmpty",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Production",
+   "to": "func:ll1.Production.String",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Table",
+   "to": "func:ll1.Table.Production",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Table",
+   "to": "func:ll1.Table.place",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.symbolSet",
+   "to": "func:ll1.symbolSet.addAll",
+   "kind": "method"
+  }
+ ]
+}

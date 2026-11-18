@@ -1,9 +1,10 @@
-site/
+/site/
 .claude/
 CLAUDE.md
 AGENTS.md
-steps/
-plans/
-memory/
-graph/
-dist/
+/steps/
+/plans/
+/memory/
+/graph/
+/dist/
+/estudo/
