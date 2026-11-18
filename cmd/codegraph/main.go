@@ -1,7 +1,7 @@
-// Command codegraph reads the Go source of this module and writes a JSON graph
-// (packages, files, types, functions, methods and the edges between them) that
-// the /graph page draws. With -notes it reads the Markdown vault in graph/
-// instead and writes the notes and their [[wikilinks]].
+// Command codegraph lê o código Go deste módulo e grava um grafo em JSON
+// (pacotes, arquivos, tipos, funções, métodos e as ligações entre eles) que a
+// página /graph desenha. Com -notes, lê em vez disso as notas Markdown de
+// graph/ e grava as notas e os seus [[wikilinks]].
 package main
 
 import (
@@ -21,7 +21,7 @@ import (
 	"strings"
 )
 
-// Node kinds, as written in the JSON.
+// Tipos de nó, como aparecem no JSON.
 const (
 	kindPackage = "package"
 	kindFile    = "file"
@@ -30,7 +30,7 @@ const (
 	kindMethod  = "method"
 )
 
-// Edge kinds, as written in the JSON.
+// Tipos de ligação, como aparecem no JSON.
 const (
 	edgeImports  = "imports"
 	edgeContains = "contains"
@@ -46,12 +46,12 @@ const (
 	outputFileMode  = 0o644
 )
 
-// Directories that never hold module code.
+// Pastas que nunca têm código do módulo.
 var skippedDirs = map[string]bool{
 	"node_modules": true, "vendor": true, "site": true, "dist": true, "web": true,
 }
 
-// Node is one package, file, type, function or method.
+// Node é um pacote, arquivo, tipo, função ou método.
 type Node struct {
 	ID        string `json:"id"`
 	Label     string `json:"label"`
@@ -64,26 +64,26 @@ type Node struct {
 	Code      string `json:"code,omitempty"`
 }
 
-// Edge is a directed relation between two nodes.
+// Edge é uma relação com sentido entre dois nós.
 type Edge struct {
 	From string `json:"from"`
 	To   string `json:"to"`
 	Kind string `json:"kind"`
 }
 
-// Graph is the whole JSON document.
+// Graph é o documento JSON inteiro.
 type Graph struct {
 	Module string `json:"module"`
 	Nodes  []Node `json:"nodes"`
 	Edges  []Edge `json:"edges"`
 }
 
-// parsedFile keeps what the second pass needs to resolve calls.
+// parsedFile guarda o que a segunda passada precisa para resolver as chamadas.
 type parsedFile struct {
 	dir     string
 	rel     string
 	file    *ast.File
-	imports map[string]string // local import name -> module directory ("" for outside the module)
+	imports map[string]string // nome local do import -> pasta no módulo ("" se for de fora)
 	decls   []*ast.FuncDecl
 }
 
@@ -94,10 +94,10 @@ type builder struct {
 	edges  map[Edge]bool
 
 	files         []*parsedFile
-	funcsByDir    map[string]map[string]string // directory -> function name -> node id
-	methodsByName map[string][]string          // method name -> node ids
-	declIDs       map[*ast.FuncDecl]string     // declaration -> node id
-	sources       map[string][]string          // file path -> lines
+	funcsByDir    map[string]map[string]string // pasta -> nome da função -> id do nó
+	methodsByName map[string][]string          // nome do método -> ids dos nós
+	declIDs       map[*ast.FuncDecl]string     // declaração -> id do nó
+	sources       map[string][]string          // caminho do arquivo -> linhas
 }
 
 func main() {
@@ -216,7 +216,7 @@ func (b *builder) packageLabel(dir string) string {
 	return dir
 }
 
-// uniqueID avoids collisions such as several init functions in one package.
+// uniqueID evita ids repetidos, como várias funções init num mesmo pacote.
 func (b *builder) uniqueID(id string, line int) string {
 	if _, taken := b.nodes[id]; taken {
 		return fmt.Sprintf("%s:%d", id, line)
@@ -230,7 +230,7 @@ func (b *builder) addEdge(from, to, kind string) {
 	}
 }
 
-// declare creates every node and the structural edges (pass one).
+// declare cria todos os nós e as ligações de estrutura (primeira passada).
 func (b *builder) declare() {
 	for _, pf := range b.files {
 		pkgID := packageID(pf.dir)
@@ -354,7 +354,7 @@ func (b *builder) declareFunc(pf *parsedFile, fileID string, d *ast.FuncDecl) {
 	b.addEdge("type:"+pf.dir+"."+recv, id, edgeMethod)
 }
 
-// receiverName returns the receiver type name, or "" for a plain function.
+// receiverName devolve o nome do tipo receptor, ou "" numa função comum.
 func receiverName(d *ast.FuncDecl) string {
 	if d.Recv == nil || len(d.Recv.List) == 0 {
 		return ""
@@ -378,14 +378,15 @@ func receiverName(d *ast.FuncDecl) string {
 	}
 }
 
-// signature prints the declaration without its body or comment.
+// signature imprime a declaração sem o corpo e sem o comentário.
 func signature(d *ast.FuncDecl) string {
 	header := *d
 	header.Body = nil
 	header.Doc = nil
 	sig := strings.Join(strings.Fields(printNode(&header)), " ")
-	if len(sig) > maxSignatureLen {
-		sig = sig[:maxSignatureLen] + "…"
+	// Corta por runa, não por byte, para não partir um "ε" ou "→" ao meio.
+	if runes := []rune(sig); len(runes) > maxSignatureLen {
+		sig = string(runes[:maxSignatureLen]) + "…"
 	}
 	return sig
 }
@@ -418,7 +419,7 @@ func firstParagraph(doc *ast.CommentGroup) string {
 	if doc == nil {
 		return ""
 	}
-	// A doc comment's first line is often cut mid-sentence, so keep the whole first paragraph.
+	// A primeira linha de um comentário costuma parar no meio da frase, então fica o primeiro parágrafo inteiro.
 	text := strings.TrimSpace(doc.Text())
 	if i := strings.Index(text, "\n\n"); i >= 0 {
 		text = text[:i]
@@ -426,7 +427,7 @@ func firstParagraph(doc *ast.CommentGroup) string {
 	return strings.Join(strings.Fields(text), " ")
 }
 
-// link resolves calls between declared functions (pass two).
+// link resolve as chamadas entre as funções declaradas (segunda passada).
 func (b *builder) link() {
 	for _, pf := range b.files {
 		for _, d := range pf.decls {
@@ -438,7 +439,7 @@ func (b *builder) link() {
 }
 
 func (b *builder) collectCalls(pf *parsedFile, caller string, body *ast.BlockStmt) {
-	// Selector names and struct-literal keys look like identifiers but are not references.
+	// Nomes depois de ponto e chaves de struct parecem identificadores, mas não são referências.
 	skipIdents := map[*ast.Ident]bool{}
 	ast.Inspect(body, func(n ast.Node) bool {
 		switch x := n.(type) {
@@ -459,7 +460,7 @@ func (b *builder) collectCalls(pf *parsedFile, caller string, body *ast.BlockStm
 				b.addEdge(caller, b.resolveSelector(pf, sel), edgeCalls)
 			}
 		case *ast.Ident:
-			// Covers direct calls and functions passed as values; Obj is set for locals.
+			// Pega chamadas diretas e funções passadas como valor; Obj existe para nomes locais.
 			if !skipIdents[x] && (x.Obj == nil || x.Obj.Kind == ast.Fun) {
 				b.addEdge(caller, b.funcsByDir[pf.dir][x.Name], edgeCalls)
 			}

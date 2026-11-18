@@ -82,7 +82,7 @@ func TestEndOfInputExitsCleanly(t *testing.T) {
 }
 
 func TestTableKeepsColumnsAligned(t *testing.T) {
-	out := table(palette{enabled: true}, []string{"A", "Bε"}, [][]string{{"xyz", "1"}}, func(_, _ int, _ string) string { return styleGood })
+	out := table(palette{enabled: true}, []string{"A", "Bε"}, [][]string{{"xyz", "1"}}, func(_ int, _ string) string { return styleGood })
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	if len(lines) != 5 {
 		t.Fatalf("lines = %d", len(lines))

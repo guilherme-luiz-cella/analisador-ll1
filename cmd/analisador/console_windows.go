@@ -21,12 +21,12 @@ var (
 	procSetConsoleOutCP = kernel32.NewProc("SetConsoleOutputCP")
 )
 
-// prepareConsole switches an attached Windows console to UTF-8 (so accents,
-// the epsilon and box drawing display correctly whatever the code page was)
-// and turns on ANSI escape handling. It reports whether colors can be used:
-// false when stdout is not a console (for example, piped) or the mode can't
-// be set. The returned function restores the original code pages; call it
-// before the program exits.
+// prepareConsole põe o console do Windows em UTF-8 (para acentos, o ε e as
+// molduras aparecerem certos qualquer que seja a página de código) e liga os
+// códigos ANSI. Diz se as cores podem ser usadas: false quando a saída não é
+// um console (por exemplo, redirecionada) ou o modo não pode ser mudado. A
+// função devolvida restaura as páginas de código e o modo originais; chame-a
+// antes de o programa sair.
 func prepareConsole() (colors bool, restore func()) {
 	restore = func() {}
 	handle := os.Stdout.Fd()
@@ -51,5 +51,9 @@ func prepareConsole() (colors bool, restore func()) {
 	}
 
 	ok, _, _ := procSetConsoleMode.Call(handle, uintptr(mode|enableVirtualTerminalProcessing))
+	if ok != 0 {
+		prev := restore
+		restore = func() { prev(); procSetConsoleMode.Call(handle, uintptr(mode)) }
+	}
 	return ok != 0, restore
 }

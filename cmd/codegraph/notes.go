@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-// noteKinds are the values the "kind" field of a note may take.
+// noteKinds são os valores aceitos no campo "kind" de uma nota.
 var noteKinds = map[string]bool{"support": true, "cli": true, "wasm": true, "tool": true, "web": true}
 
 const (
@@ -27,33 +27,33 @@ var (
 	inlineCodePattern = regexp.MustCompile("`[^`\n]*`")
 )
 
-// Note is one Markdown note of the vault: front matter, title and body.
+// Note é uma nota Markdown do cofre: cabeçalho, título e corpo.
 type Note struct {
-	ID    string `json:"id"` // file name without .md, the name [[wikilinks]] use
+	ID    string `json:"id"` // nome do arquivo sem .md, o nome usado nos [[wikilinks]]
 	Title string `json:"title"`
 	Class string `json:"class,omitempty"`
-	Path  string `json:"path,omitempty"` // source file under the module root
+	Path  string `json:"path,omitempty"` // arquivo de código, a partir da raiz do módulo
 	Kind  string `json:"kind,omitempty"`
 	Step  string `json:"step,omitempty"`
-	Dir   string `json:"dir,omitempty"` // folder of the note under the vault root
-	Body  string `json:"body"`          // Markdown without the front matter and the title line
+	Dir   string `json:"dir,omitempty"` // pasta da nota dentro do cofre
+	Body  string `json:"body"`          // Markdown sem o cabeçalho e sem a linha do título
 }
 
-// NoteEdge is a [[wikilink]] from one note to another.
+// NoteEdge é um [[wikilink]] de uma nota para outra.
 type NoteEdge struct {
 	From string `json:"from"`
 	To   string `json:"to"`
 }
 
-// NotesGraph is the JSON document written by -notes.
+// NotesGraph é o documento JSON gravado com -notes.
 type NotesGraph struct {
 	Nodes []Note     `json:"nodes"`
 	Edges []NoteEdge `json:"edges"`
 }
 
-// buildNotes reads every note under vaultDir. Problems that make the vault
-// inconsistent with the code (duplicate names, broken links, a missing source
-// file, an unknown kind) are all reported together.
+// buildNotes lê todas as notas de vaultDir. Os problemas que deixam o cofre
+// diferente do código (nome repetido, link quebrado, arquivo de código que
+// não existe, kind desconhecido) são todos informados juntos.
 func buildNotes(vaultDir, root string) (*NotesGraph, error) {
 	var notes []Note
 	var problems []error
@@ -92,7 +92,7 @@ func buildNotes(vaultDir, root string) (*NotesGraph, error) {
 	}
 	sort.Slice(notes, func(i, j int) bool { return notes[i].ID < notes[j].ID })
 
-	byName := map[string]string{} // lower-case name -> id
+	byName := map[string]string{} // nome em minúsculas -> id
 	for _, n := range notes {
 		key := strings.ToLower(n.ID)
 		if other, dup := byName[key]; dup {
@@ -135,7 +135,7 @@ func buildNotes(vaultDir, root string) (*NotesGraph, error) {
 	return graph, nil
 }
 
-// parseNote reads one note; rel is its path under the vault, e.g. "ll1/Parser.md".
+// parseNote lê uma nota; rel é o caminho dentro do cofre, ex.: "ll1/Parser.md".
 func parseNote(rel, text string) (Note, error) {
 	id := strings.TrimSuffix(path.Base(rel), noteExt)
 	fields, body, err := splitFrontmatter(text)
@@ -154,8 +154,8 @@ func parseNote(rel, text string) (Note, error) {
 	return note, nil
 }
 
-// splitFrontmatter separates the YAML block (flat "key: value" lines) from the
-// Markdown. A note without front matter is allowed and has no fields.
+// splitFrontmatter separa o bloco YAML (linhas simples "chave: valor") do
+// Markdown. Uma nota sem cabeçalho é aceita e fica sem campos.
 func splitFrontmatter(text string) (map[string]string, string, error) {
 	text = strings.ReplaceAll(strings.TrimPrefix(text, "\ufeff"), "\r\n", "\n")
 	fields := map[string]string{}
@@ -172,7 +172,9 @@ func splitFrontmatter(text string) (map[string]string, string, error) {
 	return nil, "", errors.New("front matter is not closed with ---")
 }
 
-func parseFields(block string, fields map[string]string) map[string]string {
+// parseFields lê as linhas "chave: valor" para dentro de fields; linhas que
+// começam com # são comentários do YAML.
+func parseFields(block string, fields map[string]string) {
 	for _, line := range strings.Split(block, "\n") {
 		key, value, ok := strings.Cut(line, ":")
 		if !ok || strings.HasPrefix(strings.TrimSpace(line), "#") {
@@ -180,10 +182,9 @@ func parseFields(block string, fields map[string]string) map[string]string {
 		}
 		fields[strings.TrimSpace(key)] = strings.Trim(strings.TrimSpace(value), `"'`)
 	}
-	return fields
 }
 
-// splitTitle takes the first "# Title" line as the title and removes it from the body.
+// splitTitle usa a primeira linha "# Título" como título e a tira do corpo.
 func splitTitle(fallback, body string) (string, string) {
 	lines := strings.Split(body, "\n")
 	for i, line := range lines {
@@ -199,8 +200,8 @@ func splitTitle(fallback, body string) (string, string) {
 	return fallback, strings.TrimSpace(body)
 }
 
-// extractLinks returns the target of every [[wikilink]] outside code, without
-// the |alias or #heading part.
+// extractLinks devolve o destino de cada [[wikilink]] fora de código, sem a
+// parte |apelido ou #seção.
 func extractLinks(body string) []string {
 	body = fencedCodePattern.ReplaceAllString(body, "")
 	body = inlineCodePattern.ReplaceAllString(body, "")

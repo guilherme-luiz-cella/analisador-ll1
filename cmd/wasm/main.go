@@ -1,36 +1,34 @@
 //go:build js && wasm
 
-// Command wasm exposes the ll1 package to the browser as globalThis.ll1.
-// Every function returns a JSON string, except generate and generateInvalid,
-// which return the sentence itself. Every function except presets takes an
-// optional preset id as its last argument; a missing or unknown id means the
-// assignment grammar.
+// Command wasm expõe o pacote ll1 ao navegador como globalThis.ll1. Toda
+// função devolve um texto JSON, menos generate e generateInvalid, que devolvem
+// a própria sentença. Toda função menos presets recebe, por último, o id
+// opcional de uma gramática pronta; id ausente ou desconhecido quer dizer a
+// gramática do trabalho.
 package main
 
 import (
 	"encoding/json"
 	"math/rand"
-	"strings"
 	"syscall/js"
 	"time"
 
 	"analisador-ll1/ll1"
 )
 
-// maxGenerateDepth keeps generated sentences short enough to read on a projector.
-const maxGenerateDepth = 4
+// Os tipos *JSON abaixo são o formato que web/app.js lê: os nomes dos campos
+// em JSON são o contrato com a página.
 
 type productionJSON struct {
 	Number int      `json:"number"`
 	Head   string   `json:"head"`
 	Body   []string `json:"body"`
-	Text   string   `json:"text"`
+	First  []string `json:"first"` // FIRST do corpo, usado no painel da condição LL(1)
 }
 
 type grammarJSON struct {
 	Start        string           `json:"start"`
 	Productions  []productionJSON `json:"productions"`
-	Grouped      []string         `json:"grouped"`
 	Terminals    []string         `json:"terminals"`
 	NonTerminals []string         `json:"nonTerminals"`
 }
@@ -43,9 +41,8 @@ type setsRowJSON struct {
 
 type tableCellJSON struct {
 	Column    string `json:"column"`
-	Number    int    `json:"number"` // 0 means an empty (error) cell
-	Text      string `json:"text"`
-	Conflicts []int  `json:"conflicts,omitempty"` // every production claiming a conflicting cell
+	Number    int    `json:"number"`              // 0 é célula vazia (erro)
+	Conflicts []int  `json:"conflicts,omitempty"` // todas as produções que disputam a célula
 }
 
 type tableRowJSON struct {
@@ -69,7 +66,7 @@ type stepJSON struct {
 	Stack  []string     `json:"stack"`
 	Input  []string     `json:"input"`
 	Action string       `json:"action"`
-	Cell   *cellRefJSON `json:"cell"` // table cell consulted by this step, if any
+	Cell   *cellRefJSON `json:"cell"` // célula da tabela consultada neste passo, se houver
 }
 
 type tokenJSON struct {
@@ -89,7 +86,7 @@ type presetJSON struct {
 	ID              string   `json:"id"`
 	Name            string   `json:"name"`
 	Description     string   `json:"description"`
-	Group           string   `json:"group"` // pt-BR label of the dropdown group
+	Group           string   `json:"group"` // título do grupo na lista de escolha
 	IsDefault       bool     `json:"isDefault"`
 	Author          string   `json:"author"`
 	Source          string   `json:"source"`
@@ -101,7 +98,7 @@ type presetJSON struct {
 	InvalidExamples []string `json:"invalidExamples"`
 }
 
-// loaded is one preset with its table, built once at start.
+// loaded é uma gramática pronta com a sua tabela, montada uma vez no início.
 type loaded struct {
 	preset ll1.Preset
 	table  *ll1.Table
@@ -129,7 +126,7 @@ func indexPresets(list []loaded) map[string]loaded {
 	return out
 }
 
-// selected resolves the optional preset id at args[index].
+// selected acha a gramática pelo id opcional em args[index].
 func selected(args []js.Value, index int) loaded {
 	if len(args) > index && args[index].Type() == js.TypeString {
 		if item, ok := presetMap[args[index].String()]; ok {
@@ -153,10 +150,12 @@ func presetsValue() any {
 	return toJSON(out)
 }
 
+// toJSON codifica o valor. Os tipos acima só têm textos, números e listas,
+// então Marshal não falha; se falhar, é erro do programa e deve aparecer.
 func toJSON(value any) any {
 	encoded, err := json.Marshal(value)
 	if err != nil {
-		return `{"error":"` + err.Error() + `"}`
+		panic(err)
 	}
 	return string(encoded)
 }
@@ -164,7 +163,6 @@ func toJSON(value any) any {
 func grammarValue(grammar *ll1.Grammar) any {
 	out := grammarJSON{
 		Start:        grammar.Start,
-		Grouped:      strings.Split(strings.TrimSpace(grammar.String()), "\n"),
 		Terminals:    grammar.Terminals,
 		NonTerminals: grammar.NonTerminals,
 	}
@@ -173,7 +171,7 @@ func grammarValue(grammar *ll1.Grammar) any {
 			Number: production.Number,
 			Head:   production.Head,
 			Body:   production.Body,
-			Text:   production.String(),
+			First:  grammar.FirstOfSequence(production.Body),
 		})
 	}
 	return toJSON(out)
@@ -191,27 +189,27 @@ func setsValue(grammar *ll1.Grammar) any {
 func tableValue(table *ll1.Table) any {
 	grammar := table.Grammar
 	out := tableJSON{Columns: table.Columns, Conflicts: append([]string{}, table.Conflicts...), Rows: []tableRowJSON{}}
+	conflicts := map[[2]string][]int{} // [não terminal, coluna] -> produções em disputa
+	for _, conflict := range table.ConflictCells {
+		conflicts[[2]string{conflict.NonTerminal, conflict.Column}] = conflict.Numbers
+	}
 	for _, nonTerminal := range grammar.NonTerminals {
 		row := tableRowJSON{NonTerminal: nonTerminal}
 		for _, column := range table.Columns {
-			cell := tableCellJSON{Column: column}
-			if production, ok := table.Production(nonTerminal, column); ok {
-				cell.Number, cell.Text = production.Number, production.String()
-			}
-			for _, conflict := range table.ConflictCells {
-				if conflict.NonTerminal == nonTerminal && conflict.Column == column {
-					cell.Conflicts = conflict.Numbers
-				}
-			}
-			row.Cells = append(row.Cells, cell)
+			row.Cells = append(row.Cells, tableCellJSON{
+				Column:    column,
+				Number:    table.Cells[nonTerminal][column], // 0 quando a célula está vazia
+				Conflicts: conflicts[[2]string{nonTerminal, column}],
+			})
 		}
 		out.Rows = append(out.Rows, row)
 	}
 	return toJSON(out)
 }
 
-// consultedCell returns the table cell a step reads: the stack top against the
-// current input token, when the top is a non-terminal with an entry there.
+// consultedCell devolve a célula que o passo lê: o topo da pilha contra o
+// token atual, quando o topo é não terminal e a célula tem produção. A página
+// usa isso para destacar a célula e montar a derivação.
 func consultedCell(table *ll1.Table, step ll1.Step) *cellRefJSON {
 	if len(step.Stack) == 0 || len(step.Input) == 0 {
 		return nil
@@ -252,12 +250,14 @@ func main() {
 			return parseValue(selected(args, 1).table, input)
 		}),
 		"generate": js.FuncOf(func(_ js.Value, args []js.Value) any {
-			return ll1.Generate(selected(args, 0).preset.Grammar, rng, maxGenerateDepth)
+			return ll1.Generate(selected(args, 0).preset.Grammar, rng, ll1.DefaultMaxDepth)
 		}),
 		"generateInvalid": js.FuncOf(func(_ js.Value, args []js.Value) any {
 			return ll1.GenerateInvalid(selected(args, 0).preset.Grammar, rng)
 		}),
 	}
+	// select {} mantém o programa vivo: as funções acima só respondem enquanto
+	// main não termina.
 	js.Global().Set("ll1", js.ValueOf(api))
 	select {}
 }

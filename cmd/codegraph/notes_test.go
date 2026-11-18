@@ -63,8 +63,8 @@ func TestFrontmatterMustBeClosed(t *testing.T) {
 	}
 }
 
-// The real vault must stay consistent with the code. It is skipped when the
-// folder is absent (graph/ is not always shipped with the sources).
+// O cofre de notas real tem de bater com o código. O teste é pulado quando a
+// pasta não existe (graph/ nem sempre vai junto com o código-fonte).
 func TestProjectVaultIsConsistent(t *testing.T) {
 	vault := filepath.Join("..", "..", "graph")
 	if _, err := os.Stat(vault); err != nil {

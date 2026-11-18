@@ -1,6 +1,6 @@
-// Command analisador is the terminal front end of the LL(1) predictive
-// table-driven parser: it shows the grammar, the FIRST and FOLLOW sets and the
-// parsing table, and traces the recognition of typed or generated sentences.
+// Command analisador é a versão de terminal do analisador LL(1) preditivo
+// tabular: mostra a gramática, os conjuntos FIRST e FOLLOW e a tabela de
+// parsing, e rastreia o reconhecimento de sentenças digitadas ou geradas.
 package main
 
 import (
@@ -16,17 +16,11 @@ import (
 	"analisador-ll1/ll1"
 )
 
-// generatedMaxDepth keeps generated sentences short enough to trace on screen.
-const generatedMaxDepth = 4
-
-// emptyCell marks an error entry of the parsing table.
-const emptyCell = ""
-
-// menuOption is one entry of the main menu.
+// menuOption é uma entrada do menu principal.
 type menuOption struct {
 	key    string
 	label  string
-	action func(a *app) bool // false when input ended
+	action func(a *app) bool // false quando a entrada acabou
 }
 
 var menu = []menuOption{
@@ -41,7 +35,7 @@ var menu = []menuOption{
 
 const exitKey = "0"
 
-// app holds the parser state and the terminal streams of one session.
+// app guarda o estado do analisador e a entrada e saída de uma sessão.
 type app struct {
 	preset  ll1.Preset
 	grammar *ll1.Grammar
@@ -60,7 +54,7 @@ func main() {
 	run(os.Stdin, os.Stdout, colors, rng)
 }
 
-// run shows the menu until the user picks 0 or the input ends.
+// run mostra o menu até o usuário escolher 0 ou a entrada acabar.
 func run(in io.Reader, out io.Writer, colors bool, rng *rand.Rand) {
 	a := &app{
 		rng:    rng,
@@ -102,7 +96,7 @@ func findOption(key string) (menuOption, bool) {
 	return menuOption{}, false
 }
 
-// use makes preset the current grammar.
+// use torna preset a gramática atual; a tabela é montada uma vez aqui.
 func (a *app) use(preset ll1.Preset) {
 	a.preset = preset
 	a.grammar = preset.Grammar
@@ -150,7 +144,7 @@ func (a *app) showTable() bool {
 	for _, nt := range a.grammar.NonTerminals {
 		row := []string{nt}
 		for _, column := range a.table.Columns {
-			cell := emptyCell
+			cell := "" // célula vazia é erro sintático
 			if number, ok := a.table.Cells[nt][column]; ok {
 				cell = strconv.Itoa(number)
 			}
@@ -181,7 +175,7 @@ func (a *app) typeSentence() bool {
 
 func (a *app) generateValid() bool {
 	a.section("GERAR SENTENÇA VÁLIDA")
-	a.analyze(ll1.Generate(a.grammar, a.rng, generatedMaxDepth))
+	a.analyze(ll1.Generate(a.grammar, a.rng, ll1.DefaultMaxDepth))
 	return true
 }
 
@@ -191,8 +185,8 @@ func (a *app) generateInvalid() bool {
 	return true
 }
 
-// choosePreset lists the preset grammars by group, with author and source,
-// and switches to the one picked by number.
+// choosePreset lista as gramáticas prontas por grupo, com autor e fonte, e
+// troca para a escolhida pelo número.
 func (a *app) choosePreset() bool {
 	a.section("TROCAR GRAMÁTICA")
 	presets := ll1.Presets()
@@ -229,7 +223,7 @@ func (a *app) choosePreset() bool {
 	return true
 }
 
-// sourceText reads "Fonte: autor, título", plus the LL(1) adaptation note.
+// sourceText escreve "Fonte: autor, título", mais o aviso de adaptação para LL(1).
 func sourceText(preset ll1.Preset) string {
 	text := "Fonte: " + preset.Author + ", " + preset.Source
 	if preset.Adapted {
@@ -238,7 +232,7 @@ func sourceText(preset ll1.Preset) string {
 	return text
 }
 
-// analyze parses the sentence and prints its tokens, trace and result.
+// analyze analisa a sentença e imprime os tokens, o rastro e o resultado.
 func (a *app) analyze(sentence string) {
 	a.print(fmt.Sprintf("Sentença: %s\n\n", a.colors.paint(styleBold, sentence)))
 	result := ll1.Parse(a.table, sentence)
@@ -266,7 +260,7 @@ func (a *app) analyze(sentence string) {
 		})
 	}
 	a.print(table(a.colors, []string{"Passo", "Pilha", "Entrada", "Ação"}, stepRows,
-		func(_, column int, text string) string {
+		func(column int, text string) string {
 			switch {
 			case column != actionColumn:
 				return ""
@@ -302,13 +296,14 @@ func (a *app) waitForEnter() bool {
 	return ok
 }
 
-// readLine prompts and returns the next input line, or false at end of input.
+// readLine mostra o prompt e devolve a próxima linha, ou false no fim da entrada.
 func (a *app) readLine(prompt string) (string, bool) {
 	a.print(prompt)
 	if !a.in.Scan() {
 		return "", false
 	}
-	// Keep inner and leading spaces so token positions match what was typed.
+	// Mantém os espaços do início e do meio para as posições dos tokens
+	// baterem com o que foi digitado.
 	return strings.TrimRight(a.in.Text(), "\r"), true
 }
 

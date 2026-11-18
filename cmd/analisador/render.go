@@ -5,7 +5,7 @@ import (
 	"unicode/utf8"
 )
 
-// ANSI styles; only written when the palette is enabled.
+// Estilos ANSI; só são escritos quando a paleta está ligada.
 const (
 	styleReset = "\033[0m"
 	styleBold  = "\033[1m"
@@ -15,7 +15,7 @@ const (
 	styleDim   = "\033[2m"
 )
 
-// palette wraps text in ANSI styles, or leaves it plain when disabled.
+// palette envolve o texto em estilos ANSI, ou o deixa puro quando desligada.
 type palette struct {
 	enabled bool
 }
@@ -27,7 +27,7 @@ func (p palette) paint(style, text string) string {
 	return style + text + styleReset
 }
 
-// box draws a double-line frame around the lines.
+// box desenha uma moldura de linha dupla em volta das linhas.
 func box(p palette, lines ...string) string {
 	width := 0
 	for _, line := range lines {
@@ -42,11 +42,12 @@ func box(p palette, lines ...string) string {
 	return sb.String()
 }
 
-// cellStyle picks a style for a body cell; "" means plain.
-type cellStyle func(row, column int, text string) string
+// cellStyle escolhe o estilo de uma célula do corpo; "" é texto puro.
+type cellStyle func(column int, text string) string
 
-// table draws an aligned grid with a header row. Styles are applied after
-// padding so escape codes never break the alignment.
+// table desenha uma grade alinhada com linha de cabeçalho. O estilo entra
+// depois do preenchimento com espaços, para os códigos ANSI não contarem na
+// largura e não desalinharem as colunas.
 func table(p palette, headers []string, rows [][]string, style cellStyle) string {
 	widths := make([]int, len(headers))
 	for i, h := range headers {
@@ -76,12 +77,12 @@ func table(p palette, headers []string, rows [][]string, style cellStyle) string
 	sb.WriteString(border("┌", "┬", "┐"))
 	sb.WriteString(line(headers, func(_ int, text string) string { return p.paint(styleBold, text) }))
 	sb.WriteString(border("├", "┼", "┤"))
-	for r, row := range rows {
+	for _, row := range rows {
 		sb.WriteString(line(row, func(column int, text string) string {
 			if style == nil {
 				return text
 			}
-			return p.paint(style(r, column, row[column]), text)
+			return p.paint(style(column, row[column]), text)
 		}))
 	}
 	sb.WriteString(border("└", "┴", "┘"))
