@@ -1,0 +1,702 @@
+{
+ "nodes": [
+  {
+   "id": "Codegraph",
+   "title": "Codegraph",
+   "class": "codegraph.main",
+   "path": "cmd/codegraph/main.go",
+   "kind": "tool",
+   "step": "3",
+   "dir": "cmd/codegraph",
+   "body": "Command that feeds the `/graph` page, using only the standard library. Without flags it reads the Go source of the module and writes the code graph; with `-notes` it reads the Markdown vault and writes the note graph.\n\n## Public functions\n- `codegraph -root . -o web/graph/graph.json`: code graph, built by [[builder]].\n- `codegraph -notes graph -o web/graph/notes.json`: note graph, built by [[NotesGraph]]; exits with an error if a link, a kind or a source path in the vault is wrong.\n\n## Connections\n- Writes [[Graph]]: the code-level document (`graph.json`).\n- Writes [[NotesGraph]]: the vault document (`notes.json`).\n- Runs [[builder]]: one pass to declare nodes, one to link calls.\n\n## Notes\n`build-site.ps1` runs both modes while building `site/`."
+  },
+  {
+   "id": "Console",
+   "title": "Console",
+   "class": "analisador.prepareConsole",
+   "path": "cmd/analisador/console_windows.go",
+   "kind": "cli",
+   "step": "1",
+   "dir": "cmd/analisador",
+   "body": "`prepareConsole() bool`, with one file per platform (`console_windows.go` and `console_other.go`). It says whether the output can show ANSI colors.\n\n## Public functions\n- `prepareConsole() bool`: on Windows turns on virtual terminal processing through `kernel32`; elsewhere checks that stdout is a character device. False when the output is piped.\n\n## Notes\nThe Windows file uses the standard `syscall` package; `golang.org/x/sys` is not allowed in this project."
+  },
+  {
+   "id": "Edge",
+   "title": "Edge",
+   "class": "codegraph.Edge",
+   "path": "cmd/codegraph/main.go",
+   "kind": "tool",
+   "step": "3",
+   "dir": "cmd/codegraph",
+   "body": "A directed relation between two [[Node]] ids of the code graph. Kinds: `imports` (package to package), `contains` (package to file, file to type or function), `method` (type to its methods) and `calls` (function to function).\n\n## Connections\n- Joins [[Node]]: `from` and `to` are node ids."
+  },
+  {
+   "id": "Generator",
+   "title": "Generator",
+   "class": "ll1.Generate",
+   "path": "ll1/generator.go",
+   "kind": "support",
+   "step": "1",
+   "dir": "ll1",
+   "body": "Random sentence generation for the terminal menu options 5 and 6 and for the web buttons.\n\n## Public functions\n- `Generate(g, rng, maxDepth) string`: random leftmost derivation from the start symbol; from `maxDepth` on, only the productions with the shortest derivation height are chosen, so it always ends. Lexemes: `x y z a b soma total` and numbers 0..99, joined by spaces.\n- `GenerateInvalid(g, rng) string`: mutates a valid sentence (drop a token, duplicate an operator, add an unbalanced parenthesis or insert an illegal character) and retries until [[Parser]] rejects it.\n\n## Connections\n- Uses [[Grammar]]: the productions to derive from.\n- Calls [[Parser]]: to confirm a mutated sentence is really rejected.\n- Builds [[Table]]: `GenerateInvalid` needs one to run the parser."
+  },
+  {
+   "id": "Grammar",
+   "title": "Grammar",
+   "class": "ll1.Grammar",
+   "path": "ll1/grammar.go",
+   "kind": "support",
+   "step": "1",
+   "dir": "ll1",
+   "body": "The fixed expression grammar: start symbol, non-terminals, terminals and the productions in display order. FIRST and FOLLOW live in `ll1/sets.go`; the constants `Epsilon` (`ε`), `EndMarker` (`$`), `TerminalID` and `TerminalNum` are defined here.\n\n## Public functions\n- `Default() *Grammar`: the assignment grammar, productions 1..11.\n- `IsTerminal(s) bool`, `IsNonTerminal(s) bool`: symbol membership.\n- `ProductionsOf(nonTerminal) []Production`: alternatives of one non-terminal, in order.\n- `String() string`: one line per non-terminal, alternatives joined by ` | `.\n- `First()`, `FirstOfSequence(seq)`, `Follow()`: the sets, implemented in [[Sets]].\n\n## Connections\n- Holds [[Production]]: the rules it is made of.\n- Computes through [[Sets]]: FIRST and FOLLOW.\n\n## Notes\nFIRST and FOLLOW are computed by the fixed-point algorithm, never hard-coded; the tests compare them against the textbook table."
+  },
+  {
+   "id": "Graph",
+   "title": "Graph",
+   "class": "codegraph.Graph",
+   "path": "cmd/codegraph/main.go",
+   "kind": "tool",
+   "step": "3",
+   "dir": "cmd/codegraph",
+   "body": "The code-graph JSON document: module name, nodes and edges, both sorted so the output is stable between runs.\n\n## Connections\n- Holds [[Node]]: every declared package, file, type and function.\n- Holds [[Edge]]: only edges whose two ends exist."
+  },
+  {
+   "id": "GraphPage",
+   "title": "GraphPage",
+   "class": "web.graph",
+   "path": "web/graph/graph.js",
+   "kind": "web",
+   "step": "3",
+   "dir": "web",
+   "body": "The `/graph` page: a force-directed graph in the style of Obsidian's graph view, drawn with the pinned `vis-network` 9.1.9 file kept in `web/graph/vendor/`. The \"Notas\" mode shows this vault; the \"Código\" mode shows the Go code graph (packages, files, types, functions and calls).\n\n## Public functions\n- Mode switch \"Notas | Código\": loads `notes.json` or `graph.json` on first use.\n- Node click: opens the side panel; a note is rendered as Markdown with a link to its source file on GitHub, a code node shows signature, doc and snippet.\n- Search, kind filters, \"Ajustar à tela\".\n\n## Connections\n- Reads [[NotesGraph]]: `notes.json`, written by `codegraph -notes`.\n- Reads [[Graph]]: `graph.json`, written by `codegraph`.\n- Renders bodies with [[MiniMarkdown]]: headings, lists, code and clickable wikilinks.\n\n## Notes\nNode size follows the link count; labels fade in with the zoom (hubs first); hovering a node dims everything but its neighbors. Dark by default, light with `prefers-color-scheme: light`."
+  },
+  {
+   "id": "Lexer",
+   "title": "Lexer",
+   "class": "ll1.Tokenize",
+   "path": "ll1/lexer.go",
+   "kind": "support",
+   "step": "1",
+   "dir": "ll1",
+   "body": "The scanner of the sentence, in `ll1/lexer.go`: turns the typed text into [[Token]] values before the parser sees it.\n\n## Public functions\n- `Tokenize(input string) ([]Token, error)`: identifiers `[A-Za-z_][A-Za-z0-9_]*` become `id`, digit runs `num`, `+ - * / ( )` stand for themselves and spaces, tabs and line breaks are skipped. The last token is always `$`. Any other character stops the scan with a [[LexicalError]].\n\n## Connections\n- Produces [[Token]]: one per lexeme, plus the `$` end marker.\n- Returns [[LexicalError]]: for the first character that starts no token.\n\n## Notes\nThe input is read as runes, so the reported column is right for accented text."
+  },
+  {
+   "id": "LexicalError",
+   "title": "LexicalError",
+   "class": "ll1.LexicalError",
+   "path": "ll1/lexer.go",
+   "kind": "support",
+   "step": "1",
+   "dir": "ll1",
+   "body": "Error returned by `Tokenize` for a character that starts no token. It carries the character and its 1-based column.\n\n## Public functions\n- `Error() string`: `erro léxico: caractere '#' inválido na posição 3`.\n- `Detail() string`: the same text without the `erro léxico:` prefix, used in the trace action."
+  },
+  {
+   "id": "MiniMarkdown",
+   "title": "MiniMarkdown",
+   "class": "web.MiniMarkdown",
+   "path": "web/graph/markdown.js",
+   "kind": "web",
+   "step": "3",
+   "dir": "web",
+   "body": "A small Markdown renderer for the notes panel. It builds DOM nodes, so note text can never inject HTML.\n\n## Public functions\n- `MiniMarkdown.render(markdown, { wikilink })`: returns a document fragment with headings, paragraphs, bullet and numbered lists, fenced code, quotes, `code`, bold, italic, `http(s)` links and `[[wikilinks]]`. The `wikilink(name, label)` callback returns the link element, or null so the text stays plain.\n\n## Connections\n- Used by [[GraphPage]]: the callback turns a wikilink into a jump to that node."
+  },
+  {
+   "id": "Node",
+   "title": "Node",
+   "class": "codegraph.Node",
+   "path": "cmd/codegraph/main.go",
+   "kind": "tool",
+   "step": "3",
+   "dir": "cmd/codegraph",
+   "body": "One package, file, type, function or method of the code graph: id, label, kind, package, file and line, first doc paragraph, signature and a source snippet of up to 40 lines.\n\n## Notes\nIds are `pkg:\u003cdir\u003e`, `file:\u003cpath\u003e`, `type:\u003cdir\u003e.\u003cName\u003e` and `func:\u003cdir\u003e.\u003cRecv\u003e.\u003cName\u003e`; a repeated id gets `:\u003cline\u003e` appended."
+  },
+  {
+   "id": "Note",
+   "title": "Note",
+   "class": "codegraph.Note",
+   "path": "cmd/codegraph/notes.go",
+   "kind": "tool",
+   "step": "3",
+   "dir": "cmd/codegraph",
+   "body": "One vault note as the page receives it: `id` (file name without `.md`), `title` (first `# ` line), the front matter fields `class`, `path`, `kind` and `step`, the folder `dir` and the Markdown `body` without front matter and title.\n\n## Public functions\n- `parseNote(rel, text) (Note, error)`: reads one note; rejects a kind outside `support`, `cli`, `wasm`, `tool` and `web`.\n\n## Notes\nA note may omit the front matter; its title then falls back to the file name."
+  },
+  {
+   "id": "NoteEdge",
+   "title": "NoteEdge",
+   "class": "codegraph.NoteEdge",
+   "path": "cmd/codegraph/notes.go",
+   "kind": "tool",
+   "step": "3",
+   "dir": "cmd/codegraph",
+   "body": "A `[[wikilink]]` from one note to another, as `from` and `to` ids.\n\n## Connections\n- Joins [[Note]]: both ends are note ids.\n\n## Notes\nLinks inside code spans and fenced code are ignored, `[[Name|alias]]` and `[[Name#heading]]` point to `Name`, matching is case-insensitive and duplicates and self-links are dropped."
+  },
+  {
+   "id": "NotesGraph",
+   "title": "NotesGraph",
+   "class": "codegraph.NotesGraph",
+   "path": "cmd/codegraph/notes.go",
+   "kind": "tool",
+   "step": "3",
+   "dir": "cmd/codegraph",
+   "body": "The `notes.json` document and the code that builds it: reads every `.md` under the vault (except its `README.md`), parses front matter, title and body, and turns wikilinks into edges.\n\n## Public functions\n- `buildNotes(vaultDir, root) (*NotesGraph, error)`: returns all problems together: duplicate names, a link with no note, a `path` that does not exist under `root`, an unknown kind, an unclosed front matter.\n\n## Connections\n- Holds [[Note]]: sorted by id.\n- Holds [[NoteEdge]]: sorted, without duplicates.\n\n## Notes\nThe page draws the notes as an Obsidian-style graph and shows the Markdown body in the side panel."
+  },
+  {
+   "id": "Parser",
+   "title": "Parser",
+   "class": "ll1.Parse",
+   "path": "ll1/parser.go",
+   "kind": "support",
+   "step": "1",
+   "dir": "ll1",
+   "body": "The non-recursive predictive parser: an explicit stack driven by the parsing table.\n\n## Public functions\n- `Parse(t *Table, input string) Result`: tokenizes, then loops: top `$` with input `$` accepts; a terminal on top must match the current token; a non-terminal is replaced by the body of `M[top, token]` pushed in reverse. Every action, including the final accept or error, is recorded as a [[Step]].\n\n## Connections\n- Uses [[Lexer]]: `Tokenize` splits the input.\n- Uses [[Table]]: picks the production for each non-terminal.\n- Reads [[LexicalError]]: turns it into a one-step rejected trace.\n- Returns [[Result]]: verdict, message, tokens and steps.\n\n## Notes\nA lexical error yields a one-step trace (stack `[$ E]`, input = tokens read so far, the bad character and `$`) so the screen always shows a trace ending in an error."
+  },
+  {
+   "id": "Production",
+   "title": "Production",
+   "class": "ll1.Production",
+   "path": "ll1/grammar.go",
+   "kind": "support",
+   "step": "1",
+   "dir": "ll1",
+   "body": "One numbered grammar rule (`Head -\u003e Body`). Numbers are 1-based and are what the cells of the parsing table hold.\n\n## Public functions\n- `String() string`: prints `E' -\u003e + T E'`.\n- `IsEmpty() bool`: true for the ε production (`Body` is `[ε]`).\n\n## Notes\nThe empty production keeps `Body = []string{Epsilon}` so it prints as `T' -\u003e ε`; the parser pushes nothing for it."
+  },
+  {
+   "id": "Result",
+   "title": "Result",
+   "class": "ll1.Result",
+   "path": "ll1/parser.go",
+   "kind": "support",
+   "step": "1",
+   "dir": "ll1",
+   "body": "Outcome of [[Parser]]: accepted flag, final Portuguese message (`Sentença ACEITA...` or `Sentença REJEITADA: motivo.`), the tokens and the trace.\n\n## Connections\n- Holds [[Token]]: the tokens read (only those before the bad character on a lexical error).\n- Holds [[Step]]: the full trace, first stack `[$ E]`, last action `Aceita` or `Erro...`."
+  },
+  {
+   "id": "Sets",
+   "title": "Sets",
+   "class": "ll1.symbolSet",
+   "path": "ll1/sets.go",
+   "kind": "support",
+   "step": "1",
+   "dir": "ll1",
+   "body": "FIRST and FOLLOW as a fixed-point computation. `symbolSet` (a `map[string]bool`) is the unordered set used while iterating; the public methods hand back slices in display order.\n\n## Public functions\n- `(*Grammar).First() map[string][]string`, `FirstOfSequence(seq) []string` and `Follow() map[string][]string`: see [[Grammar]]. FIRST is ordered like `Terminals` with ε last, FOLLOW like `Terminals` with `$` last.\n\n## Connections\n- Reads [[Grammar]]: productions and symbol order.\n- Feeds [[Table]]: `BuildTable` uses the unexported `firstSets`, `firstOfSequence` and `followSets` to fill the cells.\n\n## Notes\nEach rule is repeated until no set grows, so the result never depends on the order of the productions."
+  },
+  {
+   "id": "Step",
+   "title": "Step",
+   "class": "ll1.Step",
+   "path": "ll1/parser.go",
+   "kind": "support",
+   "step": "1",
+   "dir": "ll1",
+   "body": "One row of the parsing trace: its number, the stack (bottom first, top last), the remaining token kinds (ending with `$`) and the action taken (`E -\u003e T E'`, `Casa 'id' (soma)`, `Casa '+'`, `Aceita`, `Erro: ...`)."
+  },
+  {
+   "id": "Table",
+   "title": "Table",
+   "class": "ll1.Table",
+   "path": "ll1/table.go",
+   "kind": "support",
+   "step": "1",
+   "dir": "ll1",
+   "body": "The LL(1) parsing table `M[non-terminal, terminal]` holding production numbers. `Columns` are the terminals plus `$`; `Conflicts` is empty for an LL(1) grammar.\n\n## Public functions\n- `BuildTable(g *Grammar) *Table`: puts `A -\u003e α` in `M[A, a]` for each `a` in FIRST(α) and, when ε is in FIRST(α), in `M[A, b]` for each `b` in FOLLOW(A). A cell claimed twice is recorded in `Conflicts` (Portuguese text); the first production keeps it.\n- `Production(nonTerminal, column) (Production, bool)`: the production in a cell; false for an error cell.\n\n## Connections\n- Reads [[Grammar]]: the productions and symbol order.\n- Uses [[Sets]]: FIRST and FOLLOW decide which cells are filled.\n- Returns [[Production]]: from a cell lookup."
+  },
+  {
+   "id": "Token",
+   "title": "Token",
+   "class": "ll1.Token",
+   "path": "ll1/lexer.go",
+   "kind": "support",
+   "step": "1",
+   "dir": "ll1",
+   "body": "One lexical unit: terminal kind (`id`, `num`, `+`, ... or `$`), the lexeme as typed and its 1-based column.\n\n## Notes\nColumns count runes, not bytes, so accented input still reports the right position. Tokens are created by [[Lexer]]."
+  },
+  {
+   "id": "Wasm",
+   "title": "Wasm",
+   "class": "wasm.main",
+   "path": "cmd/wasm/main.go",
+   "kind": "wasm",
+   "step": "2",
+   "dir": "cmd/wasm",
+   "body": "Entry point of the browser build (`GOOS=js GOARCH=wasm`). It exposes the `ll1` package as `globalThis.ll1` and keeps the program alive with `select {}`.\n\n## Public functions\n- `ll1.grammar()`, `ll1.sets()`, `ll1.table()`: JSON strings for the grammar, the FIRST and FOLLOW rows and the parsing table.\n- `ll1.parse(sentence)`: JSON string with the verdict, tokens and steps.\n- `ll1.generate()`, `ll1.generateInvalid()`: the sentence itself, as plain text.\n\n## Connections\n- Uses [[Grammar]]: `Default` is the grammar served to the page.\n- Uses [[Table]]: built once at start; cells and conflicts are copied to [[tableJSON]].\n- Calls [[Parser]]: `parse` runs it and converts the [[Result]].\n- Calls [[Generator]]: for the two generate buttons.\n- Builds [[grammarJSON]], [[setsRowJSON]], [[tableJSON]] and [[resultJSON]]: the shapes the page receives.\n\n## Notes\nThe JSON types below mirror the Go types so that the page never sees Go structs. Errors in encoding come back as `{\"error\": ...}`."
+  },
+  {
+   "id": "WebApp",
+   "title": "WebApp",
+   "class": "web.app",
+   "path": "web/app.js",
+   "kind": "web",
+   "step": "2",
+   "dir": "web",
+   "body": "The analyzer page (`web/index.html`, `app.js`, `style.css`) served at the site root. It loads `main.wasm`, shows the grammar, the FIRST and FOLLOW sets and the parsing table, takes a typed or generated sentence and shows the verdict with the tokens and the stack, step by step or all at once.\n\n## Public functions\n- Button handlers in `app.js`: Analisar, Gerar válida, Gerar inválida, Limpar, the example sentences and the step controls (anterior, próximo, reproduzir).\n\n## Connections\n- Calls [[Wasm]]: `globalThis.ll1.grammar()`, `sets()`, `table()`, `parse()`, `generate()` and `generateInvalid()` return JSON strings.\n- Reads [[resultJSON]]: tokens, steps and the verdict drawn on screen.\n- Reads [[tableJSON]]: the parsing table; the cell a step consulted (from [[cellRefJSON]]) is highlighted.\n- Reads [[grammarJSON]]: the productions and symbol lists shown in the grammar panel.\n- Reads [[setsRowJSON]]: one row per non-terminal in the FIRST and FOLLOW table.\n\n## Notes\nAll text from the parser is put on the page with `textContent`, never as HTML. The page links to [[GraphPage]] (`/graph`)."
+  },
+  {
+   "id": "app",
+   "title": "app",
+   "class": "analisador.app",
+   "path": "cmd/analisador/main.go",
+   "kind": "cli",
+   "step": "1",
+   "dir": "cmd/analisador",
+   "body": "The terminal program: pt-BR menu (1 Gramática, 2 FIRST e FOLLOW, 3 Tabela, 4 Digitar, 5 Gerar válida, 6 Gerar inválida, 0 Sair). Options 4 to 6 print the tokens, the step table (Passo, Pilha, Entrada, Ação) and the result, then wait for Enter and show the menu again.\n\n## Public functions\n- `run(in, out, colors, rng)`: the menu loop; ends on 0 or at the end of the input. Used by `main` and by the tests.\n\n## Connections\n- Reads [[menuOption]]: the table of menu entries it dispatches on.\n- Draws with [[palette]]: boxes, aligned tables and optional ANSI colors.\n- Calls [[Console]]: `prepareConsole` decides whether colors can be used.\n- Uses [[Grammar]]: grammar, FIRST and FOLLOW sets for options 1 and 2.\n- Uses [[Table]]: option 3 prints it.\n- Calls [[Parser]]: options 4 to 6 trace the recognition.\n- Calls [[Generator]]: options 5 and 6 create the sentence.\n\n## Notes\nFrames and tables are drawn by `render.go`. Colors are ANSI, used only when `NO_COLOR` is unset and the console accepts them; piped output is plain."
+  },
+  {
+   "id": "builder",
+   "title": "builder",
+   "class": "codegraph.builder",
+   "path": "cmd/codegraph/main.go",
+   "kind": "tool",
+   "step": "3",
+   "dir": "cmd/codegraph",
+   "body": "Builds the code graph with `go/parser` and `go/ast`. Pass one (`declare`) creates the nodes and the structural edges; pass two (`link`) resolves calls between functions declared in the module.\n\n## Public functions\n- `buildGraph(root) (*Graph, error)`: the whole pipeline for a module directory.\n\n## Connections\n- Reads [[parsedFile]]: every non-test Go file, skipping `web`, `site`, `dist`, `vendor` and hidden folders.\n- Creates [[Node]]: one per package, file, type, function and method.\n- Creates [[Edge]]: imports, contains, method and calls.\n- Returns [[Graph]]: sorted nodes and edges.\n\n## Notes\nA call `x.M()` resolves to a method only when `M` is unique in the module; a plain call or a function passed as a value resolves inside its own package."
+  },
+  {
+   "id": "cellRefJSON",
+   "title": "cellRefJSON",
+   "class": "wasm.cellRefJSON",
+   "path": "cmd/wasm/main.go",
+   "kind": "wasm",
+   "step": "2",
+   "dir": "cmd/wasm",
+   "body": "A pointer to a table cell (`nonTerminal`, `column`). A step carries one when the stack top is a non-terminal with an entry for the current token, so the page can highlight the cell that step read.\n\n## Connections\n- Points into [[tableJSON]]: the cell it names."
+  },
+  {
+   "id": "grammarJSON",
+   "title": "grammarJSON",
+   "class": "wasm.grammarJSON",
+   "path": "cmd/wasm/main.go",
+   "kind": "wasm",
+   "step": "2",
+   "dir": "cmd/wasm",
+   "body": "The grammar for the page: start symbol, productions, the grouped lines (`E' -\u003e + T E' | - T E' | ε`), terminals and non-terminals.\n\n## Connections\n- Holds [[productionJSON]]: the numbered rules.\n- Mirrors [[Grammar]]: start symbol, symbol lists and `String()` lines."
+  },
+  {
+   "id": "menuOption",
+   "title": "menuOption",
+   "class": "analisador.menuOption",
+   "path": "cmd/analisador/main.go",
+   "kind": "cli",
+   "step": "1",
+   "dir": "cmd/analisador",
+   "body": "One entry of the main menu: the key the user types, the label shown and the `app` method that runs. The action returns false when the input ended, so the loop can stop cleanly.\n\n## Connections\n- Dispatches to [[app]]: each entry is a method expression such as `(*app).showGrammar`."
+  },
+  {
+   "id": "palette",
+   "title": "palette",
+   "class": "analisador.palette",
+   "path": "cmd/analisador/render.go",
+   "kind": "cli",
+   "step": "1",
+   "dir": "cmd/analisador",
+   "body": "Terminal drawing helpers of `render.go`. `palette` wraps text in ANSI styles or leaves it plain when disabled.\n\n## Public functions\n- `paint(style, text) string`: wraps `text` in the style, or returns it as is when colors are off.\n- `box(p, lines...) string`: double-line frame used for the title and section headers.\n- `table(p, headers, rows, style) string`: aligned grid; styles are applied after padding so escape codes never break the columns.\n\n## Connections\n- Used by [[app]]: every screen goes through it.\n\n## Notes\nWidths are counted in runes, so accented text stays aligned."
+  },
+  {
+   "id": "parsedFile",
+   "title": "parsedFile",
+   "class": "codegraph.parsedFile",
+   "path": "cmd/codegraph/main.go",
+   "kind": "tool",
+   "step": "3",
+   "dir": "cmd/codegraph",
+   "body": "A parsed `.go` file with what the second pass needs to resolve calls: its directory, relative path, AST, the import names mapped to module directories and the function declarations.\n\n## Connections\n- Collected by [[builder]]: one per non-test file of the module."
+  },
+  {
+   "id": "productionJSON",
+   "title": "productionJSON",
+   "class": "wasm.productionJSON",
+   "path": "cmd/wasm/main.go",
+   "kind": "wasm",
+   "step": "2",
+   "dir": "cmd/wasm",
+   "body": "A grammar rule for the page: `number`, `head`, `body` and the printed `text` (`E' -\u003e + T E'`).\n\n## Connections\n- Mirrors [[Production]]: same fields, plus the printed text."
+  },
+  {
+   "id": "resultJSON",
+   "title": "resultJSON",
+   "class": "wasm.resultJSON",
+   "path": "cmd/wasm/main.go",
+   "kind": "wasm",
+   "step": "2",
+   "dir": "cmd/wasm",
+   "body": "What `ll1.parse` returns: `accepted`, the Portuguese `message`, the tokens and the steps.\n\n## Connections\n- Mirrors [[Result]]: the verdict and message are copied.\n- Holds [[tokenJSON]]: the recognized tokens.\n- Holds [[stepJSON]]: the full trace."
+  },
+  {
+   "id": "setsRowJSON",
+   "title": "setsRowJSON",
+   "class": "wasm.setsRowJSON",
+   "path": "cmd/wasm/main.go",
+   "kind": "wasm",
+   "step": "2",
+   "dir": "cmd/wasm",
+   "body": "One row of the FIRST and FOLLOW table: a non-terminal and its two sets, already ordered.\n\n## Connections\n- Reads [[Sets]]: values come from `First()` and `Follow()`."
+  },
+  {
+   "id": "stepJSON",
+   "title": "stepJSON",
+   "class": "wasm.stepJSON",
+   "path": "cmd/wasm/main.go",
+   "kind": "wasm",
+   "step": "2",
+   "dir": "cmd/wasm",
+   "body": "One row of the trace for the page: number, stack, remaining input, action and the optional consulted cell.\n\n## Connections\n- Mirrors [[Step]]: same four fields.\n- Holds [[cellRefJSON]]: the table cell this step consulted, or null."
+  },
+  {
+   "id": "tableCellJSON",
+   "title": "tableCellJSON",
+   "class": "wasm.tableCellJSON",
+   "path": "cmd/wasm/main.go",
+   "kind": "wasm",
+   "step": "2",
+   "dir": "cmd/wasm",
+   "body": "One cell of the parsing table: the column, the production `number` (0 means an empty, error cell) and its printed `text`.\n\n## Connections\n- Mirrors [[Production]]: number and text of the production the cell holds."
+  },
+  {
+   "id": "tableJSON",
+   "title": "tableJSON",
+   "class": "wasm.tableJSON",
+   "path": "cmd/wasm/main.go",
+   "kind": "wasm",
+   "step": "2",
+   "dir": "cmd/wasm",
+   "body": "The whole parsing table for the page: `columns`, `rows` and the list of `conflicts` (empty for this grammar).\n\n## Connections\n- Holds [[tableRowJSON]]: one per non-terminal.\n- Mirrors [[Table]]: columns and conflicts are copied from it."
+  },
+  {
+   "id": "tableRowJSON",
+   "title": "tableRowJSON",
+   "class": "wasm.tableRowJSON",
+   "path": "cmd/wasm/main.go",
+   "kind": "wasm",
+   "step": "2",
+   "dir": "cmd/wasm",
+   "body": "One row of the parsing table: a non-terminal with one cell per column.\n\n## Connections\n- Holds [[tableCellJSON]]: in the same order as the table columns."
+  },
+  {
+   "id": "tokenJSON",
+   "title": "tokenJSON",
+   "class": "wasm.tokenJSON",
+   "path": "cmd/wasm/main.go",
+   "kind": "wasm",
+   "step": "2",
+   "dir": "cmd/wasm",
+   "body": "A token for the page: `kind`, `lexeme` and `pos`.\n\n## Connections\n- Mirrors [[Token]]: same three fields."
+  }
+ ],
+ "edges": [
+  {
+   "from": "Codegraph",
+   "to": "Graph"
+  },
+  {
+   "from": "Codegraph",
+   "to": "NotesGraph"
+  },
+  {
+   "from": "Codegraph",
+   "to": "builder"
+  },
+  {
+   "from": "Edge",
+   "to": "Node"
+  },
+  {
+   "from": "Generator",
+   "to": "Grammar"
+  },
+  {
+   "from": "Generator",
+   "to": "Parser"
+  },
+  {
+   "from": "Generator",
+   "to": "Table"
+  },
+  {
+   "from": "Grammar",
+   "to": "Production"
+  },
+  {
+   "from": "Grammar",
+   "to": "Sets"
+  },
+  {
+   "from": "Graph",
+   "to": "Edge"
+  },
+  {
+   "from": "Graph",
+   "to": "Node"
+  },
+  {
+   "from": "GraphPage",
+   "to": "Graph"
+  },
+  {
+   "from": "GraphPage",
+   "to": "MiniMarkdown"
+  },
+  {
+   "from": "GraphPage",
+   "to": "NotesGraph"
+  },
+  {
+   "from": "Lexer",
+   "to": "LexicalError"
+  },
+  {
+   "from": "Lexer",
+   "to": "Token"
+  },
+  {
+   "from": "MiniMarkdown",
+   "to": "GraphPage"
+  },
+  {
+   "from": "NoteEdge",
+   "to": "Note"
+  },
+  {
+   "from": "NotesGraph",
+   "to": "Note"
+  },
+  {
+   "from": "NotesGraph",
+   "to": "NoteEdge"
+  },
+  {
+   "from": "Parser",
+   "to": "Lexer"
+  },
+  {
+   "from": "Parser",
+   "to": "LexicalError"
+  },
+  {
+   "from": "Parser",
+   "to": "Result"
+  },
+  {
+   "from": "Parser",
+   "to": "Step"
+  },
+  {
+   "from": "Parser",
+   "to": "Table"
+  },
+  {
+   "from": "Result",
+   "to": "Parser"
+  },
+  {
+   "from": "Result",
+   "to": "Step"
+  },
+  {
+   "from": "Result",
+   "to": "Token"
+  },
+  {
+   "from": "Sets",
+   "to": "Grammar"
+  },
+  {
+   "from": "Sets",
+   "to": "Table"
+  },
+  {
+   "from": "Table",
+   "to": "Grammar"
+  },
+  {
+   "from": "Table",
+   "to": "Production"
+  },
+  {
+   "from": "Table",
+   "to": "Sets"
+  },
+  {
+   "from": "Token",
+   "to": "Lexer"
+  },
+  {
+   "from": "Wasm",
+   "to": "Generator"
+  },
+  {
+   "from": "Wasm",
+   "to": "Grammar"
+  },
+  {
+   "from": "Wasm",
+   "to": "Parser"
+  },
+  {
+   "from": "Wasm",
+   "to": "Result"
+  },
+  {
+   "from": "Wasm",
+   "to": "Table"
+  },
+  {
+   "from": "Wasm",
+   "to": "grammarJSON"
+  },
+  {
+   "from": "Wasm",
+   "to": "resultJSON"
+  },
+  {
+   "from": "Wasm",
+   "to": "setsRowJSON"
+  },
+  {
+   "from": "Wasm",
+   "to": "tableJSON"
+  },
+  {
+   "from": "WebApp",
+   "to": "GraphPage"
+  },
+  {
+   "from": "WebApp",
+   "to": "Wasm"
+  },
+  {
+   "from": "WebApp",
+   "to": "cellRefJSON"
+  },
+  {
+   "from": "WebApp",
+   "to": "grammarJSON"
+  },
+  {
+   "from": "WebApp",
+   "to": "resultJSON"
+  },
+  {
+   "from": "WebApp",
+   "to": "setsRowJSON"
+  },
+  {
+   "from": "WebApp",
+   "to": "tableJSON"
+  },
+  {
+   "from": "app",
+   "to": "Console"
+  },
+  {
+   "from": "app",
+   "to": "Generator"
+  },
+  {
+   "from": "app",
+   "to": "Grammar"
+  },
+  {
+   "from": "app",
+   "to": "Parser"
+  },
+  {
+   "from": "app",
+   "to": "Table"
+  },
+  {
+   "from": "app",
+   "to": "menuOption"
+  },
+  {
+   "from": "app",
+   "to": "palette"
+  },
+  {
+   "from": "builder",
+   "to": "Edge"
+  },
+  {
+   "from": "builder",
+   "to": "Graph"
+  },
+  {
+   "from": "builder",
+   "to": "Node"
+  },
+  {
+   "from": "builder",
+   "to": "parsedFile"
+  },
+  {
+   "from": "cellRefJSON",
+   "to": "tableJSON"
+  },
+  {
+   "from": "grammarJSON",
+   "to": "Grammar"
+  },
+  {
+   "from": "grammarJSON",
+   "to": "productionJSON"
+  },
+  {
+   "from": "menuOption",
+   "to": "app"
+  },
+  {
+   "from": "palette",
+   "to": "app"
+  },
+  {
+   "from": "parsedFile",
+   "to": "builder"
+  },
+  {
+   "from": "productionJSON",
+   "to": "Production"
+  },
+  {
+   "from": "resultJSON",
+   "to": "Result"
+  },
+  {
+   "from": "resultJSON",
+   "to": "stepJSON"
+  },
+  {
+   "from": "resultJSON",
+   "to": "tokenJSON"
+  },
+  {
+   "from": "setsRowJSON",
+   "to": "Sets"
+  },
+  {
+   "from": "stepJSON",
+   "to": "Step"
+  },
+  {
+   "from": "stepJSON",
+   "to": "cellRefJSON"
+  },
+  {
+   "from": "tableCellJSON",
+   "to": "Production"
+  },
+  {
+   "from": "tableJSON",
+   "to": "Table"
+  },
+  {
+   "from": "tableJSON",
+   "to": "tableRowJSON"
+  },
+  {
+   "from": "tableRowJSON",
+   "to": "tableCellJSON"
+  },
+  {
+   "from": "tokenJSON",
+   "to": "Token"
+  }
+ ]
+}

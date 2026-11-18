@@ -47,6 +47,15 @@
    "signature": "import bytes, encoding/json, flag, fmt, go/ast, go/parser, go/printer, go/token, io/fs, os, path, path/filepath, sort, strings"
   },
   {
+   "id": "file:cmd/codegraph/notes.go",
+   "label": "notes.go",
+   "kind": "file",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/notes.go",
+   "line": 1,
+   "signature": "import errors, fmt, io/fs, os, path, path/filepath, regexp, sort, strings"
+  },
+  {
    "id": "file:cmd/wasm/main.go",
    "label": "main.go",
    "kind": "file",
@@ -114,7 +123,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 181,
+   "line": 183,
    "doc": "analyze parses the sentence and prints its tokens, trace and result.",
    "signature": "func (a *app) analyze(sentence string)",
    "code": "func (a *app) analyze(sentence string) {\n\ta.print(fmt.Sprintf(\"Sentença: %s\\n\\n\", a.colors.paint(styleBold, sentence)))\n\tresult := ll1.Parse(a.table, sentence)\n\n\ta.print(\"Tokens:\\n\")\n\tvar tokenRows [][]string\n\tfor _, token := range result.Tokens {\n\t\ttokenRows = append(tokenRows, []string{token.Kind, token.Lexeme, strconv.Itoa(token.Pos)})\n\t}\n\tif len(tokenRows) == 0 {\n\t\ta.print(\"  (nenhum token reconhecido)\\n\")\n\t} else {\n\t\ta.print(table(a.colors, []string{\"Token\", \"Lexema\", \"Posição\"}, tokenRows, nil))\n\t}\n\n\ta.print(\"\\nPassos da análise (topo da pilha à direita):\\n\")\n\tconst actionColumn = 3\n\tvar stepRows [][]string\n\tfor _, step := range result.Steps {\n\t\tstepRows = append(stepRows, []string{\n\t\t\tstrconv.Itoa(step.Number),\n\t\t\tstrings.Join(step.Stack, \" \"),\n\t\t\tstrings.Join(step.Input, \" \"),\n\t\t\tstep.Action,\n\t\t})\n\t}\n\ta.print(table(a.colors, []string{\"Passo\", \"Pilha\", \"Entrada\", \"Ação\"}, stepRows,\n\t\tfunc(_, column int, text string) string {\n\t\t\tswitch {\n\t\t\tcase column != actionColumn:\n\t\t\t\treturn \"\"\n\t\t\tcase text == ll1.ActionAccept:\n\t\t\t\treturn styleGood\n\t\t\tcase strings.HasPrefix(text, ll1.ErrorPrefix):\n\t\t\t\treturn styleBad\n\t\t\t}\n\t\t\treturn \"\"\n\t\t}))\n\n\tstyle := styleBad\n// … (+5 linhas)"
@@ -125,7 +134,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 174,
+   "line": 176,
    "signature": "func (a *app) generateInvalid() bool",
    "code": "func (a *app) generateInvalid() bool {\n\ta.section(\"GERAR SENTENÇA INVÁLIDA\")\n\ta.analyze(ll1.GenerateInvalid(a.grammar, a.rng))\n\treturn true\n}"
   },
@@ -135,7 +144,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 168,
+   "line": 170,
    "signature": "func (a *app) generateValid() bool",
    "code": "func (a *app) generateValid() bool {\n\ta.section(\"GERAR SENTENÇA VÁLIDA\")\n\ta.analyze(ll1.Generate(a.grammar, a.rng, generatedMaxDepth))\n\treturn true\n}"
   },
@@ -145,7 +154,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 254,
+   "line": 256,
    "signature": "func (a *app) print(text string)",
    "code": "func (a *app) print(text string) {\n\tfmt.Fprint(a.out, text)\n}"
   },
@@ -155,7 +164,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 102,
+   "line": 104,
    "signature": "func (a *app) printMenu()",
    "code": "func (a *app) printMenu() {\n\ta.print(\"\\n\" + a.colors.paint(styleTitle, \"MENU\") + \"\\n\")\n\tfor _, option := range menu {\n\t\ta.print(fmt.Sprintf(\"  %s  %s\\n\", a.colors.paint(styleBold, option.key), option.label))\n\t}\n\ta.print(fmt.Sprintf(\"  %s  %s\\n\\n\", a.colors.paint(styleBold, exitKey), \"Sair\"))\n}"
   },
@@ -165,7 +174,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 227,
+   "line": 229,
    "signature": "func (a *app) productionList() string",
    "code": "func (a *app) productionList() string {\n\tvar sb strings.Builder\n\tfor _, p := range a.grammar.Productions {\n\t\tsb.WriteString(fmt.Sprintf(\"  %2d. %s\\n\", p.Number, p))\n\t}\n\treturn sb.String()\n}"
   },
@@ -175,7 +184,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 245,
+   "line": 247,
    "doc": "readLine prompts and returns the next input line, or false at end of input.",
    "signature": "func (a *app) readLine(prompt string) (string, bool)",
    "code": "func (a *app) readLine(prompt string) (string, bool) {\n\ta.print(prompt)\n\tif !a.in.Scan() {\n\t\treturn \"\", false\n\t}\n\t// Keep inner and leading spaces so token positions match what was typed.\n\treturn strings.TrimRight(a.in.Text(), \"\\r\"), true\n}"
@@ -186,7 +195,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 235,
+   "line": 237,
    "signature": "func (a *app) section(title string)",
    "code": "func (a *app) section(title string) {\n\ta.print(\"\\n\" + box(a.colors, title) + \"\\n\")\n}"
   },
@@ -196,7 +205,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 110,
+   "line": 112,
    "signature": "func (a *app) showGrammar() bool",
    "code": "func (a *app) showGrammar() bool {\n\ta.section(\"GRAMÁTICA\")\n\ta.print(a.grammar.String())\n\ta.print(fmt.Sprintf(\"\\nSímbolo inicial: %s\\n\", a.grammar.Start))\n\ta.print(fmt.Sprintf(\"Não terminais:   %s\\n\", strings.Join(a.grammar.NonTerminals, \" \")))\n\ta.print(fmt.Sprintf(\"Terminais:       %s (fim da entrada: %s)\\n\\n\", strings.Join(a.grammar.Terminals, \" \"), ll1.EndMarker))\n\ta.print(\"Produções numeradas (os números aparecem na tabela de parsing):\\n\")\n\ta.print(a.productionList())\n\treturn true\n}"
   },
@@ -206,7 +215,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 121,
+   "line": 123,
    "signature": "func (a *app) showSets() bool",
    "code": "func (a *app) showSets() bool {\n\ta.section(\"CONJUNTOS FIRST E FOLLOW\")\n\tfirst, follow := a.grammar.First(), a.grammar.Follow()\n\tvar rows [][]string\n\tfor _, nt := range a.grammar.NonTerminals {\n\t\trows = append(rows, []string{nt, setText(first[nt]), setText(follow[nt])})\n\t}\n\ta.print(table(a.colors, []string{\"Não terminal\", \"FIRST\", \"FOLLOW\"}, rows, nil))\n\treturn true\n}"
   },
@@ -216,7 +225,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 132,
+   "line": 134,
    "signature": "func (a *app) showTable() bool",
    "code": "func (a *app) showTable() bool {\n\ta.section(\"TABELA DE PARSING LL(1)\")\n\theaders := append([]string{\"M\"}, a.table.Columns...)\n\tvar rows [][]string\n\tfor _, nt := range a.grammar.NonTerminals {\n\t\trow := []string{nt}\n\t\tfor _, column := range a.table.Columns {\n\t\t\tcell := emptyCell\n\t\t\tif number, ok := a.table.Cells[nt][column]; ok {\n\t\t\t\tcell = strconv.Itoa(number)\n\t\t\t}\n\t\t\trow = append(row, cell)\n\t\t}\n\t\trows = append(rows, row)\n\t}\n\ta.print(table(a.colors, headers, rows, nil))\n\ta.print(\"Células vazias indicam erro sintático.\\n\")\n\tif len(a.table.Conflicts) == 0 {\n\t\ta.print(\"Nenhum conflito: a gramática é LL(1).\\n\\n\")\n\t} else {\n\t\ta.print(a.colors.paint(styleBad, strings.Join(a.table.Conflicts, \"\\n\")) + \"\\n\\n\")\n\t}\n\ta.print(a.productionList())\n\treturn true\n}"
   },
@@ -226,7 +235,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 158,
+   "line": 160,
    "signature": "func (a *app) typeSentence() bool",
    "code": "func (a *app) typeSentence() bool {\n\ta.section(\"DIGITAR SENTENÇA\")\n\tsentence, ok := a.readLine(\"Digite a sentença: \")\n\tif !ok {\n\t\treturn false\n\t}\n\ta.analyze(sentence)\n\treturn true\n}"
   },
@@ -236,7 +245,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 239,
+   "line": 241,
    "signature": "func (a *app) waitForEnter() bool",
    "code": "func (a *app) waitForEnter() bool {\n\t_, ok := a.readLine(\"\\n\" + a.colors.paint(styleDim, \"Pressione Enter para voltar ao menu\"))\n\treturn ok\n}"
   },
@@ -257,7 +266,7 @@
    "kind": "func",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 93,
+   "line": 95,
    "signature": "func findOption(key string) (menuOption, bool)",
    "code": "func findOption(key string) (menuOption, bool) {\n\tfor _, option := range menu {\n\t\tif option.key == key {\n\t\t\treturn option, true\n\t\t}\n\t}\n\treturn menuOption{}, false\n}"
   },
@@ -269,7 +278,7 @@
    "file": "cmd/analisador/main.go",
    "line": 53,
    "signature": "func main()",
-   "code": "func main() {\n\tcolors := os.Getenv(\"NO_COLOR\") == \"\" \u0026\u0026 prepareConsole()\n\trng := rand.New(rand.NewSource(time.Now().UnixNano()))\n\trun(os.Stdin, os.Stdout, colors, rng)\n}"
+   "code": "func main() {\n\tcanColor, restore := prepareConsole()\n\tdefer restore()\n\tcolors := os.Getenv(\"NO_COLOR\") == \"\" \u0026\u0026 canColor\n\trng := rand.New(rand.NewSource(time.Now().UnixNano()))\n\trun(os.Stdin, os.Stdout, colors, rng)\n}"
   },
   {
    "id": "func:cmd/analisador.pad",
@@ -297,21 +306,21 @@
    "kind": "func",
    "package": "cmd/analisador",
    "file": "cmd/analisador/console_other.go",
-   "line": 8,
-   "doc": "prepareConsole reports whether stdout is a terminal that can show colors.",
-   "signature": "func prepareConsole() bool",
-   "code": "func prepareConsole() bool {\n\tinfo, err := os.Stdout.Stat()\n\treturn err == nil \u0026\u0026 info.Mode()\u0026os.ModeCharDevice != 0\n}"
+   "line": 9,
+   "doc": "prepareConsole reports whether stdout is a terminal that can show colors. The returned function is a no-op on this platform.",
+   "signature": "func prepareConsole() (colors bool, restore func())",
+   "code": "func prepareConsole() (colors bool, restore func()) {\n\tinfo, err := os.Stdout.Stat()\n\treturn err == nil \u0026\u0026 info.Mode()\u0026os.ModeCharDevice != 0, func() {}\n}"
   },
   {
-   "id": "func:cmd/analisador.prepareConsole:20",
+   "id": "func:cmd/analisador.prepareConsole:30",
    "label": "prepareConsole",
    "kind": "func",
    "package": "cmd/analisador",
    "file": "cmd/analisador/console_windows.go",
-   "line": 20,
-   "doc": "prepareConsole turns on ANSI escape handling in the Windows console. It reports whether colors can be used: false when stdout is not a console (for example, piped) or the mode can't be set.",
-   "signature": "func prepareConsole() bool",
-   "code": "func prepareConsole() bool {\n\thandle := os.Stdout.Fd()\n\tvar mode uint32\n\tif ok, _, _ := procGetConsoleMode.Call(handle, uintptr(unsafe.Pointer(\u0026mode))); ok == 0 {\n\t\treturn false\n\t}\n\tok, _, _ := procSetConsoleMode.Call(handle, uintptr(mode|enableVirtualTerminalProcessing))\n\treturn ok != 0\n}"
+   "line": 30,
+   "doc": "prepareConsole switches an attached Windows console to UTF-8 (so accents, the epsilon and box drawing display correctly whatever the code page was) and turns on ANSI escape handling. It reports whether colors can be used: false when stdout is not a console (for example, piped) or the mode can't be set. The returned function restores the original code pages; call it before the program exits.",
+   "signature": "func prepareConsole() (colors bool, restore func())",
+   "code": "func prepareConsole() (colors bool, restore func()) {\n\trestore = func() {}\n\thandle := os.Stdout.Fd()\n\tvar mode uint32\n\tif ok, _, _ := procGetConsoleMode.Call(handle, uintptr(unsafe.Pointer(\u0026mode))); ok == 0 {\n\t\treturn false, restore\n\t}\n\n\toldOut, _, _ := procGetConsoleOutCP.Call()\n\toldIn, _, _ := procGetConsoleCP.Call()\n\tif oldOut != 0 \u0026\u0026 oldOut != codePageUTF8 {\n\t\tif ok, _, _ := procSetConsoleOutCP.Call(codePageUTF8); ok != 0 {\n\t\t\tprev := restore\n\t\t\trestore = func() { prev(); procSetConsoleOutCP.Call(oldOut) }\n\t\t}\n\t}\n\tif oldIn != 0 \u0026\u0026 oldIn != codePageUTF8 {\n\t\tif ok, _, _ := procSetConsoleCP.Call(codePageUTF8); ok != 0 {\n\t\t\tprev := restore\n\t\t\trestore = func() { prev(); procSetConsoleCP.Call(oldIn) }\n\t\t}\n\t}\n\n\tok, _, _ := procSetConsoleMode.Call(handle, uintptr(mode|enableVirtualTerminalProcessing))\n\treturn ok != 0, restore\n}"
   },
   {
    "id": "func:cmd/analisador.run",
@@ -319,7 +328,7 @@
    "kind": "func",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 60,
+   "line": 62,
    "doc": "run shows the menu until the user picks 0 or the input ends.",
    "signature": "func run(in io.Reader, out io.Writer, colors bool, rng *rand.Rand)",
    "code": "func run(in io.Reader, out io.Writer, colors bool, rng *rand.Rand) {\n\tgrammar := ll1.Default()\n\ta := \u0026app{\n\t\tgrammar: grammar,\n\t\ttable:   ll1.BuildTable(grammar),\n\t\trng:     rng,\n\t\tin:      bufio.NewScanner(in),\n\t\tout:     out,\n\t\tcolors:  palette{enabled: colors},\n\t}\n\ta.print(box(a.colors,\n\t\t\"ANALISADOR SINTÁTICO LL(1)\",\n\t\t\"Preditivo tabular (não recursivo)\"))\n\tfor {\n\t\ta.printMenu()\n\t\tchoice, ok := a.readLine(\"Escolha uma opção: \")\n\t\tchoice = strings.TrimSpace(choice)\n\t\tif !ok || choice == exitKey {\n\t\t\ta.print(\"\\nAté logo!\\n\")\n\t\t\treturn\n\t\t}\n\t\toption, found := findOption(choice)\n\t\tif !found {\n\t\t\ta.print(a.colors.paint(styleBad, \"Opção inválida.\") + \"\\n\")\n\t\t\tcontinue\n\t\t}\n\t\tif !option.action(a) || !a.waitForEnter() {\n\t\t\ta.print(\"\\nAté logo!\\n\")\n\t\t\treturn\n\t\t}\n\t}\n}"
@@ -330,7 +339,7 @@
    "kind": "func",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 258,
+   "line": 260,
    "signature": "func setText(symbols []string) string",
    "code": "func setText(symbols []string) string {\n\treturn \"{ \" + strings.Join(symbols, \", \") + \" }\"\n}"
   },
@@ -351,9 +360,20 @@
    "kind": "func",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 128,
+   "line": 138,
    "signature": "func buildGraph(root string) (*Graph, error)",
    "code": "func buildGraph(root string) (*Graph, error) {\n\tmodule, err := readModulePath(filepath.Join(root, \"go.mod\"))\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\tb := \u0026builder{\n\t\tmodule:        module,\n\t\tfset:          token.NewFileSet(),\n\t\tnodes:         map[string]*Node{},\n\t\tedges:         map[Edge]bool{},\n\t\tfuncsByDir:    map[string]map[string]string{},\n\t\tmethodsByName: map[string][]string{},\n\t\tdeclIDs:       map[*ast.FuncDecl]string{},\n\t\tsources:       map[string][]string{},\n\t}\n\tif err := b.parseTree(root); err != nil {\n\t\treturn nil, err\n\t}\n\tb.declare()\n\tb.link()\n\treturn b.result(), nil\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.buildNotes",
+   "label": "buildNotes",
+   "kind": "func",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/notes.go",
+   "line": 57,
+   "doc": "buildNotes reads every note under vaultDir. Problems that make the vault inconsistent with the code (duplicate names, broken links, a missing source file, an unknown kind) are all reported together.",
+   "signature": "func buildNotes(vaultDir, root string) (*NotesGraph, error)",
+   "code": "func buildNotes(vaultDir, root string) (*NotesGraph, error) {\n\tvar notes []Note\n\tvar problems []error\n\terr := filepath.WalkDir(vaultDir, func(p string, entry fs.DirEntry, err error) error {\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tname := entry.Name()\n\t\tif entry.IsDir() {\n\t\t\tif p != vaultDir \u0026\u0026 strings.HasPrefix(name, \".\") {\n\t\t\t\treturn filepath.SkipDir\n\t\t\t}\n\t\t\treturn nil\n\t\t}\n\t\tif !strings.HasSuffix(name, noteExt) || (name == vaultReadme \u0026\u0026 filepath.Dir(p) == filepath.Clean(vaultDir)) {\n\t\t\treturn nil\n\t\t}\n\t\tdata, err := os.ReadFile(p)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\trel, err := filepath.Rel(vaultDir, p)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tnote, err := parseNote(filepath.ToSlash(rel), string(data))\n\t\tif err != nil {\n\t\t\tproblems = append(problems, err)\n\t\t\treturn nil\n\t\t}\n\t\tnotes = append(notes, note)\n\t\treturn nil\n\t})\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\tsort.Slice(notes, func(i, j int) bool { return notes[i].ID \u003c notes[j].ID })\n\n\tbyName := map[string]string{} // lower-case name -\u003e id\n\tfor _, n := range notes {\n// … (+40 linhas)"
   },
   {
    "id": "func:cmd/codegraph.builder.addEdge",
@@ -361,7 +381,7 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 217,
+   "line": 227,
    "signature": "func (b *builder) addEdge(from, to, kind string)",
    "code": "func (b *builder) addEdge(from, to, kind string) {\n\tif from != \"\" \u0026\u0026 to != \"\" \u0026\u0026 from != to {\n\t\tb.edges[Edge{From: from, To: to, Kind: kind}] = true\n\t}\n}"
   },
@@ -371,7 +391,7 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 430,
+   "line": 440,
    "signature": "func (b *builder) collectCalls(pf *parsedFile, caller string, body *ast.BlockStmt)",
    "code": "func (b *builder) collectCalls(pf *parsedFile, caller string, body *ast.BlockStmt) {\n\t// Selector names and struct-literal keys look like identifiers but are not references.\n\tskipIdents := map[*ast.Ident]bool{}\n\tast.Inspect(body, func(n ast.Node) bool {\n\t\tswitch x := n.(type) {\n\t\tcase *ast.SelectorExpr:\n\t\t\tskipIdents[x.Sel] = true\n\t\tcase *ast.KeyValueExpr:\n\t\t\tif key, ok := x.Key.(*ast.Ident); ok {\n\t\t\t\tskipIdents[key] = true\n\t\t\t}\n\t\t}\n\t\treturn true\n\t})\n\n\tast.Inspect(body, func(n ast.Node) bool {\n\t\tswitch x := n.(type) {\n\t\tcase *ast.CallExpr:\n\t\t\tif sel, ok := x.Fun.(*ast.SelectorExpr); ok {\n\t\t\t\tb.addEdge(caller, b.resolveSelector(pf, sel), edgeCalls)\n\t\t\t}\n\t\tcase *ast.Ident:\n\t\t\t// Covers direct calls and functions passed as values; Obj is set for locals.\n\t\t\tif !skipIdents[x] \u0026\u0026 (x.Obj == nil || x.Obj.Kind == ast.Fun) {\n\t\t\t\tb.addEdge(caller, b.funcsByDir[pf.dir][x.Name], edgeCalls)\n\t\t\t}\n\t\t}\n\t\treturn true\n\t})\n}"
   },
@@ -381,7 +401,7 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 224,
+   "line": 234,
    "doc": "declare creates every node and the structural edges (pass one).",
    "signature": "func (b *builder) declare()",
    "code": "func (b *builder) declare() {\n\tfor _, pf := range b.files {\n\t\tpkgID := packageID(pf.dir)\n\t\tpkg := b.nodes[pkgID]\n\t\tif pkg == nil {\n\t\t\tpkg = \u0026Node{ID: pkgID, Label: b.packageLabel(pf.dir), Kind: kindPackage, Package: pf.dir,\n\t\t\t\tSignature: \"package \" + pf.file.Name.Name}\n\t\t\tb.nodes[pkgID] = pkg\n\t\t}\n\t\tif pkg.Doc == \"\" {\n\t\t\tpkg.Doc = firstParagraph(pf.file.Doc)\n\t\t}\n\n\t\tfileID := \"file:\" + pf.rel\n\t\tb.nodes[fileID] = \u0026Node{ID: fileID, Label: path.Base(pf.rel), Kind: kindFile, Package: pf.dir,\n\t\t\tFile: pf.rel, Line: 1, Signature: importSummary(pf.file)}\n\t\tb.addEdge(pkgID, fileID, edgeContains)\n\n\t\tpf.imports = map[string]string{}\n\t\tfor _, spec := range pf.file.Imports {\n\t\t\tb.declareImport(pf, pkgID, spec)\n\t\t}\n\n\t\tfor _, decl := range pf.file.Decls {\n\t\t\tswitch d := decl.(type) {\n\t\t\tcase *ast.GenDecl:\n\t\t\t\tb.declareTypes(pf, fileID, d)\n\t\t\tcase *ast.FuncDecl:\n\t\t\t\tb.declareFunc(pf, fileID, d)\n\t\t\t}\n\t\t}\n\t}\n}"
@@ -392,7 +412,7 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 321,
+   "line": 331,
    "signature": "func (b *builder) declareFunc(pf *parsedFile, fileID string, d *ast.FuncDecl)",
    "code": "func (b *builder) declareFunc(pf *parsedFile, fileID string, d *ast.FuncDecl) {\n\tline := b.fset.Position(d.Pos()).Line\n\tend := b.fset.Position(d.End()).Line\n\tkind, label, prefix := kindFunc, d.Name.Name, \"func:\"+pf.dir+\".\"\n\trecv := receiverName(d)\n\tif recv != \"\" {\n\t\tkind, label, prefix = kindMethod, recv+\".\"+d.Name.Name, \"func:\"+pf.dir+\".\"+recv+\".\"\n\t}\n\tid := b.uniqueID(prefix+d.Name.Name, line)\n\tb.nodes[id] = \u0026Node{ID: id, Label: label, Kind: kind, Package: pf.dir, File: pf.rel, Line: line,\n\t\tDoc: firstParagraph(d.Doc), Signature: signature(d), Code: b.snippet(pf.rel, line, end)}\n\tb.declIDs[d] = id\n\tb.addEdge(fileID, id, edgeContains)\n\tpf.decls = append(pf.decls, d)\n\n\tif recv == \"\" {\n\t\tif b.funcsByDir[pf.dir] == nil {\n\t\t\tb.funcsByDir[pf.dir] = map[string]string{}\n\t\t}\n\t\tb.funcsByDir[pf.dir][d.Name.Name] = id\n\t\treturn\n\t}\n\tb.methodsByName[d.Name.Name] = append(b.methodsByName[d.Name.Name], id)\n\tb.addEdge(\"type:\"+pf.dir+\".\"+recv, id, edgeMethod)\n}"
   },
@@ -402,7 +422,7 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 269,
+   "line": 279,
    "signature": "func (b *builder) declareImport(pf *parsedFile, pkgID string, spec *ast.ImportSpec)",
    "code": "func (b *builder) declareImport(pf *parsedFile, pkgID string, spec *ast.ImportSpec) {\n\timportPath := strings.Trim(spec.Path.Value, `\"`)\n\tlocal := path.Base(importPath)\n\tif spec.Name != nil {\n\t\tlocal = spec.Name.Name\n\t}\n\tif local == \"_\" || local == \".\" {\n\t\treturn\n\t}\n\tdir := \"\"\n\tswitch {\n\tcase importPath == b.module:\n\t\tdir = rootDir\n\tcase strings.HasPrefix(importPath, b.module+\"/\"):\n\t\tdir = strings.TrimPrefix(importPath, b.module+\"/\")\n\t}\n\tpf.imports[local] = dir\n\tif dir != \"\" {\n\t\tb.addEdge(pkgID, packageID(dir), edgeImports)\n\t}\n}"
   },
@@ -412,7 +432,7 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 291,
+   "line": 301,
    "signature": "func (b *builder) declareTypes(pf *parsedFile, fileID string, d *ast.GenDecl)",
    "code": "func (b *builder) declareTypes(pf *parsedFile, fileID string, d *ast.GenDecl) {\n\tif d.Tok != token.TYPE {\n\t\treturn\n\t}\n\tfor _, spec := range d.Specs {\n\t\tts := spec.(*ast.TypeSpec)\n\t\tline := b.fset.Position(ts.Pos()).Line\n\t\tid := b.uniqueID(\"type:\"+pf.dir+\".\"+ts.Name.Name, line)\n\t\tdoc := ts.Doc\n\t\tif doc == nil \u0026\u0026 len(d.Specs) == 1 {\n\t\t\tdoc = d.Doc\n\t\t}\n\t\tend := b.fset.Position(ts.End()).Line\n\t\tb.nodes[id] = \u0026Node{ID: id, Label: ts.Name.Name, Kind: kindType, Package: pf.dir, File: pf.rel,\n\t\t\tLine: line, Doc: firstParagraph(doc), Signature: typeSignature(ts), Code: b.snippet(pf.rel, line, end)}\n\t\tb.addEdge(fileID, id, edgeContains)\n\t}\n}"
   },
@@ -422,7 +442,7 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 420,
+   "line": 430,
    "doc": "link resolves calls between declared functions (pass two).",
    "signature": "func (b *builder) link()",
    "code": "func (b *builder) link() {\n\tfor _, pf := range b.files {\n\t\tfor _, d := range pf.decls {\n\t\t\tif d.Body != nil {\n\t\t\t\tb.collectCalls(pf, b.declIDs[d], d.Body)\n\t\t\t}\n\t\t}\n\t}\n}"
@@ -433,7 +453,7 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 202,
+   "line": 212,
    "signature": "func (b *builder) packageLabel(dir string) string",
    "code": "func (b *builder) packageLabel(dir string) string {\n\tif dir == rootDir {\n\t\treturn path.Base(b.module)\n\t}\n\treturn dir\n}"
   },
@@ -443,7 +463,7 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 165,
+   "line": 175,
    "signature": "func (b *builder) parseTree(root string) error",
    "code": "func (b *builder) parseTree(root string) error {\n\treturn filepath.WalkDir(root, func(p string, entry fs.DirEntry, err error) error {\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tname := entry.Name()\n\t\tif entry.IsDir() {\n\t\t\tif p != root \u0026\u0026 (strings.HasPrefix(name, \".\") || strings.HasPrefix(name, \"_\") || skippedDirs[name]) {\n\t\t\t\treturn filepath.SkipDir\n\t\t\t}\n\t\t\treturn nil\n\t\t}\n\t\tif !strings.HasSuffix(name, \".go\") || strings.HasSuffix(name, \"_test.go\") {\n\t\t\treturn nil\n\t\t}\n\t\trel, err := filepath.Rel(root, p)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\trel = filepath.ToSlash(rel)\n\t\tdata, err := os.ReadFile(p)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tfile, err := parser.ParseFile(b.fset, rel, data, parser.ParseComments)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tdir := path.Dir(rel)\n\t\tb.sources[rel] = strings.Split(strings.ReplaceAll(string(data), \"\\r\\n\", \"\\n\"), \"\\n\")\n\t\tb.files = append(b.files, \u0026parsedFile{dir: dir, rel: rel, file: file})\n\t\treturn nil\n\t})\n}"
   },
@@ -453,7 +473,7 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 461,
+   "line": 471,
    "signature": "func (b *builder) resolveSelector(pf *parsedFile, sel *ast.SelectorExpr) string",
    "code": "func (b *builder) resolveSelector(pf *parsedFile, sel *ast.SelectorExpr) string {\n\tif x, ok := sel.X.(*ast.Ident); ok \u0026\u0026 x.Obj == nil {\n\t\tif dir, imported := pf.imports[x.Name]; imported {\n\t\t\tif dir == \"\" {\n\t\t\t\treturn \"\"\n\t\t\t}\n\t\t\treturn b.funcsByDir[dir][sel.Sel.Name]\n\t\t}\n\t}\n\tif ids := b.methodsByName[sel.Sel.Name]; len(ids) == 1 {\n\t\treturn ids[0]\n\t}\n\treturn \"\"\n}"
   },
@@ -463,7 +483,7 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 476,
+   "line": 486,
    "signature": "func (b *builder) result() *Graph",
    "code": "func (b *builder) result() *Graph {\n\tgraph := \u0026Graph{Module: b.module, Nodes: []Node{}, Edges: []Edge{}}\n\tfor _, n := range b.nodes {\n\t\tgraph.Nodes = append(graph.Nodes, *n)\n\t}\n\tfor e := range b.edges {\n\t\tif b.nodes[e.From] != nil \u0026\u0026 b.nodes[e.To] != nil {\n\t\t\tgraph.Edges = append(graph.Edges, e)\n\t\t}\n\t}\n\tsort.Slice(graph.Nodes, func(i, j int) bool { return graph.Nodes[i].ID \u003c graph.Nodes[j].ID })\n\tsort.Slice(graph.Edges, func(i, j int) bool {\n\t\ta, c := graph.Edges[i], graph.Edges[j]\n\t\tif a.From != c.From {\n\t\t\treturn a.From \u003c c.From\n\t\t}\n\t\tif a.To != c.To {\n\t\t\treturn a.To \u003c c.To\n\t\t}\n\t\treturn a.Kind \u003c c.Kind\n\t})\n\treturn graph\n}"
   },
@@ -473,7 +493,7 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 391,
+   "line": 401,
    "signature": "func (b *builder) snippet(file string, start, end int) string",
    "code": "func (b *builder) snippet(file string, start, end int) string {\n\tlines := b.sources[file]\n\tif start \u003c 1 || start \u003e len(lines) {\n\t\treturn \"\"\n\t}\n\tif end \u003e len(lines) {\n\t\tend = len(lines)\n\t}\n\ttotal := end - start + 1\n\tif total \u003e maxSnippetLines {\n\t\tcut := lines[start-1 : start-1+maxSnippetLines]\n\t\treturn strings.Join(cut, \"\\n\") + fmt.Sprintf(\"\\n// … (+%d linhas)\", total-maxSnippetLines)\n\t}\n\treturn strings.Join(lines[start-1:end], \"\\n\")\n}"
   },
@@ -483,10 +503,21 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 210,
+   "line": 220,
    "doc": "uniqueID avoids collisions such as several init functions in one package.",
    "signature": "func (b *builder) uniqueID(id string, line int) string",
    "code": "func (b *builder) uniqueID(id string, line int) string {\n\tif _, taken := b.nodes[id]; taken {\n\t\treturn fmt.Sprintf(\"%s:%d\", id, line)\n\t}\n\treturn id\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.extractLinks",
+   "label": "extractLinks",
+   "kind": "func",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/notes.go",
+   "line": 204,
+   "doc": "extractLinks returns the target of every [[wikilink]] outside code, without the |alias or #heading part.",
+   "signature": "func extractLinks(body string) []string",
+   "code": "func extractLinks(body string) []string {\n\tbody = fencedCodePattern.ReplaceAllString(body, \"\")\n\tbody = inlineCodePattern.ReplaceAllString(body, \"\")\n\tvar targets []string\n\tfor _, match := range wikilinkPattern.FindAllStringSubmatch(body, -1) {\n\t\ttarget := match[1]\n\t\tif i := strings.IndexAny(target, \"|#\"); i \u003e= 0 {\n\t\t\ttarget = target[:i]\n\t\t}\n\t\tif target = strings.TrimSpace(target); target != \"\" {\n\t\t\ttargets = append(targets, target)\n\t\t}\n\t}\n\treturn targets\n}"
   },
   {
    "id": "func:cmd/codegraph.firstParagraph",
@@ -494,7 +525,7 @@
    "kind": "func",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 407,
+   "line": 417,
    "signature": "func firstParagraph(doc *ast.CommentGroup) string",
    "code": "func firstParagraph(doc *ast.CommentGroup) string {\n\tif doc == nil {\n\t\treturn \"\"\n\t}\n\t// A doc comment's first line is often cut mid-sentence, so keep the whole first paragraph.\n\ttext := strings.TrimSpace(doc.Text())\n\tif i := strings.Index(text, \"\\n\\n\"); i \u003e= 0 {\n\t\ttext = text[:i]\n\t}\n\treturn strings.Join(strings.Fields(text), \" \")\n}"
   },
@@ -504,7 +535,7 @@
    "kind": "func",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 258,
+   "line": 268,
    "signature": "func importSummary(file *ast.File) string",
    "code": "func importSummary(file *ast.File) string {\n\tvar paths []string\n\tfor _, spec := range file.Imports {\n\t\tpaths = append(paths, strings.Trim(spec.Path.Value, `\"`))\n\t}\n\tif len(paths) == 0 {\n\t\treturn \"\"\n\t}\n\treturn \"import \" + strings.Join(paths, \", \")\n}"
   },
@@ -514,9 +545,9 @@
    "kind": "func",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 102,
+   "line": 103,
    "signature": "func main()",
-   "code": "func main() {\n\troot := flag.String(\"root\", \".\", \"module root directory\")\n\tout := flag.String(\"o\", \"\", \"output file (default: stdout)\")\n\tflag.Parse()\n\n\tgraph, err := buildGraph(*root)\n\tif err != nil {\n\t\tfmt.Fprintln(os.Stderr, \"codegraph:\", err)\n\t\tos.Exit(1)\n\t}\n\tdata, err := json.MarshalIndent(graph, \"\", \" \")\n\tif err != nil {\n\t\tfmt.Fprintln(os.Stderr, \"codegraph:\", err)\n\t\tos.Exit(1)\n\t}\n\tdata = append(data, '\\n')\n\tif *out == \"\" {\n\t\tos.Stdout.Write(data)\n\t\treturn\n\t}\n\tif err := os.WriteFile(*out, data, outputFileMode); err != nil {\n\t\tfmt.Fprintln(os.Stderr, \"codegraph:\", err)\n\t\tos.Exit(1)\n\t}\n}"
+   "code": "func main() {\n\troot := flag.String(\"root\", \".\", \"module root directory\")\n\tnotes := flag.String(\"notes\", \"\", \"vault directory: write the note graph instead of the code graph\")\n\tout := flag.String(\"o\", \"\", \"output file (default: stdout)\")\n\tflag.Parse()\n\n\tvar document any\n\tvar err error\n\tif *notes != \"\" {\n\t\tdocument, err = buildNotes(*notes, *root)\n\t} else {\n\t\tdocument, err = buildGraph(*root)\n\t}\n\tif err == nil {\n\t\terr = writeJSON(document, *out)\n\t}\n\tif err != nil {\n\t\tfmt.Fprintln(os.Stderr, \"codegraph:\", err)\n\t\tos.Exit(1)\n\t}\n}"
   },
   {
    "id": "func:cmd/codegraph.packageID",
@@ -524,9 +555,30 @@
    "kind": "func",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 200,
+   "line": 210,
    "signature": "func packageID(dir string) string",
    "code": "func packageID(dir string) string { return \"pkg:\" + dir }"
+  },
+  {
+   "id": "func:cmd/codegraph.parseFields",
+   "label": "parseFields",
+   "kind": "func",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/notes.go",
+   "line": 175,
+   "signature": "func parseFields(block string, fields map[string]string) map[string]string",
+   "code": "func parseFields(block string, fields map[string]string) map[string]string {\n\tfor _, line := range strings.Split(block, \"\\n\") {\n\t\tkey, value, ok := strings.Cut(line, \":\")\n\t\tif !ok || strings.HasPrefix(strings.TrimSpace(line), \"#\") {\n\t\t\tcontinue\n\t\t}\n\t\tfields[strings.TrimSpace(key)] = strings.Trim(strings.TrimSpace(value), `\"'`)\n\t}\n\treturn fields\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.parseNote",
+   "label": "parseNote",
+   "kind": "func",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/notes.go",
+   "line": 139,
+   "doc": "parseNote reads one note; rel is its path under the vault, e.g. \"ll1/Parser.md\".",
+   "signature": "func parseNote(rel, text string) (Note, error)",
+   "code": "func parseNote(rel, text string) (Note, error) {\n\tid := strings.TrimSuffix(path.Base(rel), noteExt)\n\tfields, body, err := splitFrontmatter(text)\n\tif err != nil {\n\t\treturn Note{}, fmt.Errorf(\"%s: %w\", rel, err)\n\t}\n\tnote := Note{ID: id, Title: id, Class: fields[\"class\"], Path: fields[\"path\"],\n\t\tKind: fields[\"kind\"], Step: fields[\"step\"]}\n\tif dir := path.Dir(rel); dir != \".\" {\n\t\tnote.Dir = dir\n\t}\n\tif note.Kind != \"\" \u0026\u0026 !noteKinds[note.Kind] {\n\t\treturn Note{}, fmt.Errorf(\"%s: unknown kind %q\", rel, note.Kind)\n\t}\n\tnote.Title, note.Body = splitTitle(id, body)\n\treturn note, nil\n}"
   },
   {
    "id": "func:cmd/codegraph.printNode",
@@ -534,7 +586,7 @@
    "kind": "func",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 383,
+   "line": 393,
    "signature": "func printNode(node any) string",
    "code": "func printNode(node any) string {\n\tvar buf bytes.Buffer\n\tif err := printer.Fprint(\u0026buf, token.NewFileSet(), node); err != nil {\n\t\treturn \"\"\n\t}\n\treturn buf.String()\n}"
   },
@@ -544,7 +596,7 @@
    "kind": "func",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 151,
+   "line": 161,
    "signature": "func readModulePath(goMod string) (string, error)",
    "code": "func readModulePath(goMod string) (string, error) {\n\tdata, err := os.ReadFile(goMod)\n\tif err != nil {\n\t\treturn \"\", err\n\t}\n\tfor _, line := range strings.Split(string(data), \"\\n\") {\n\t\tline = strings.TrimSpace(line)\n\t\tif strings.HasPrefix(line, modulePrefix) {\n\t\t\treturn strings.Trim(strings.TrimSpace(strings.TrimPrefix(line, modulePrefix)), `\"`), nil\n\t\t}\n\t}\n\treturn \"\", fmt.Errorf(\"no module line in %s\", goMod)\n}"
   },
@@ -554,7 +606,7 @@
    "kind": "func",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 348,
+   "line": 358,
    "doc": "receiverName returns the receiver type name, or \"\" for a plain function.",
    "signature": "func receiverName(d *ast.FuncDecl) string",
    "code": "func receiverName(d *ast.FuncDecl) string {\n\tif d.Recv == nil || len(d.Recv.List) == 0 {\n\t\treturn \"\"\n\t}\n\texpr := d.Recv.List[0].Type\n\tfor {\n\t\tswitch t := expr.(type) {\n\t\tcase *ast.StarExpr:\n\t\t\texpr = t.X\n\t\tcase *ast.IndexExpr:\n\t\t\texpr = t.X\n\t\tcase *ast.IndexListExpr:\n\t\t\texpr = t.X\n\t\tcase *ast.ParenExpr:\n\t\t\texpr = t.X\n\t\tcase *ast.Ident:\n\t\t\treturn t.Name\n\t\tdefault:\n\t\t\treturn \"\"\n\t\t}\n\t}\n}"
@@ -565,10 +617,32 @@
    "kind": "func",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 372,
+   "line": 382,
    "doc": "signature prints the declaration without its body or comment.",
    "signature": "func signature(d *ast.FuncDecl) string",
    "code": "func signature(d *ast.FuncDecl) string {\n\theader := *d\n\theader.Body = nil\n\theader.Doc = nil\n\tsig := strings.Join(strings.Fields(printNode(\u0026header)), \" \")\n\tif len(sig) \u003e maxSignatureLen {\n\t\tsig = sig[:maxSignatureLen] + \"…\"\n\t}\n\treturn sig\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.splitFrontmatter",
+   "label": "splitFrontmatter",
+   "kind": "func",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/notes.go",
+   "line": 159,
+   "doc": "splitFrontmatter separates the YAML block (flat \"key: value\" lines) from the Markdown. A note without front matter is allowed and has no fields.",
+   "signature": "func splitFrontmatter(text string) (map[string]string, string, error)",
+   "code": "func splitFrontmatter(text string) (map[string]string, string, error) {\n\ttext = strings.ReplaceAll(strings.TrimPrefix(text, \"\\ufeff\"), \"\\r\\n\", \"\\n\")\n\tfields := map[string]string{}\n\tif !strings.HasPrefix(text, frontmatterSep+\"\\n\") {\n\t\treturn fields, text, nil\n\t}\n\tlines := strings.Split(text, \"\\n\")\n\tfor i := 1; i \u003c len(lines); i++ {\n\t\tif strings.TrimRight(lines[i], \" \\t\") == frontmatterSep {\n\t\t\tparseFields(strings.Join(lines[1:i], \"\\n\"), fields)\n\t\t\treturn fields, strings.TrimLeft(strings.Join(lines[i+1:], \"\\n\"), \"\\n\"), nil\n\t\t}\n\t}\n\treturn nil, \"\", errors.New(\"front matter is not closed with ---\")\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.splitTitle",
+   "label": "splitTitle",
+   "kind": "func",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/notes.go",
+   "line": 187,
+   "doc": "splitTitle takes the first \"# Title\" line as the title and removes it from the body.",
+   "signature": "func splitTitle(fallback, body string) (string, string)",
+   "code": "func splitTitle(fallback, body string) (string, string) {\n\tlines := strings.Split(body, \"\\n\")\n\tfor i, line := range lines {\n\t\tif strings.TrimSpace(line) == \"\" {\n\t\t\tcontinue\n\t\t}\n\t\tif title, ok := strings.CutPrefix(line, \"# \"); ok {\n\t\t\trest := strings.Join(lines[i+1:], \"\\n\")\n\t\t\treturn strings.TrimSpace(title), strings.TrimSpace(rest)\n\t\t}\n\t\tbreak\n\t}\n\treturn fallback, strings.TrimSpace(body)\n}"
   },
   {
    "id": "func:cmd/codegraph.typeSignature",
@@ -576,9 +650,19 @@
    "kind": "func",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 310,
+   "line": 320,
    "signature": "func typeSignature(ts *ast.TypeSpec) string",
    "code": "func typeSignature(ts *ast.TypeSpec) string {\n\tswitch t := ts.Type.(type) {\n\tcase *ast.StructType:\n\t\treturn \"type \" + ts.Name.Name + \" struct\"\n\tcase *ast.InterfaceType:\n\t\treturn \"type \" + ts.Name.Name + \" interface\"\n\tdefault:\n\t\treturn \"type \" + ts.Name.Name + \" \" + printNode(t)\n\t}\n}"
+  },
+  {
+   "id": "func:cmd/codegraph.writeJSON",
+   "label": "writeJSON",
+   "kind": "func",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/main.go",
+   "line": 125,
+   "signature": "func writeJSON(document any, out string) error",
+   "code": "func writeJSON(document any, out string) error {\n\tdata, err := json.MarshalIndent(document, \"\", \" \")\n\tif err != nil {\n\t\treturn err\n\t}\n\tdata = append(data, '\\n')\n\tif out == \"\" {\n\t\t_, err = os.Stdout.Write(data)\n\t\treturn err\n\t}\n\treturn os.WriteFile(out, data, outputFileMode)\n}"
   },
   {
    "id": "func:cmd/wasm.consultedCell",
@@ -1091,7 +1175,7 @@
    "label": "cmd/codegraph",
    "kind": "package",
    "package": "cmd/codegraph",
-   "doc": "Command codegraph reads the Go source of this module and writes a JSON graph (packages, files, types, functions, methods and the edges between them) that the /graph page draws.",
+   "doc": "Command codegraph reads the Go source of this module and writes a JSON graph (packages, files, types, functions, methods and the edges between them) that the /graph page draws. With -notes it reads the Markdown vault in graph/ instead and writes the notes and their [[wikilinks]].",
    "signature": "package main"
   },
   {
@@ -1160,7 +1244,7 @@
    "kind": "type",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 67,
+   "line": 68,
    "doc": "Edge is a directed relation between two nodes.",
    "signature": "type Edge struct",
    "code": "type Edge struct {\n\tFrom string `json:\"from\"`\n\tTo   string `json:\"to\"`\n\tKind string `json:\"kind\"`\n}"
@@ -1171,7 +1255,7 @@
    "kind": "type",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 74,
+   "line": 75,
    "doc": "Graph is the whole JSON document.",
    "signature": "type Graph struct",
    "code": "type Graph struct {\n\tModule string `json:\"module\"`\n\tNodes  []Node `json:\"nodes\"`\n\tEdges  []Edge `json:\"edges\"`\n}"
@@ -1182,10 +1266,43 @@
    "kind": "type",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 54,
+   "line": 55,
    "doc": "Node is one package, file, type, function or method.",
    "signature": "type Node struct",
    "code": "type Node struct {\n\tID        string `json:\"id\"`\n\tLabel     string `json:\"label\"`\n\tKind      string `json:\"kind\"`\n\tPackage   string `json:\"package\"`\n\tFile      string `json:\"file,omitempty\"`\n\tLine      int    `json:\"line,omitempty\"`\n\tDoc       string `json:\"doc,omitempty\"`\n\tSignature string `json:\"signature,omitempty\"`\n\tCode      string `json:\"code,omitempty\"`\n}"
+  },
+  {
+   "id": "type:cmd/codegraph.Note",
+   "label": "Note",
+   "kind": "type",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/notes.go",
+   "line": 31,
+   "doc": "Note is one Markdown note of the vault: front matter, title and body.",
+   "signature": "type Note struct",
+   "code": "type Note struct {\n\tID    string `json:\"id\"` // file name without .md, the name [[wikilinks]] use\n\tTitle string `json:\"title\"`\n\tClass string `json:\"class,omitempty\"`\n\tPath  string `json:\"path,omitempty\"` // source file under the module root\n\tKind  string `json:\"kind,omitempty\"`\n\tStep  string `json:\"step,omitempty\"`\n\tDir   string `json:\"dir,omitempty\"` // folder of the note under the vault root\n\tBody  string `json:\"body\"`          // Markdown without the front matter and the title line\n}"
+  },
+  {
+   "id": "type:cmd/codegraph.NoteEdge",
+   "label": "NoteEdge",
+   "kind": "type",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/notes.go",
+   "line": 43,
+   "doc": "NoteEdge is a [[wikilink]] from one note to another.",
+   "signature": "type NoteEdge struct",
+   "code": "type NoteEdge struct {\n\tFrom string `json:\"from\"`\n\tTo   string `json:\"to\"`\n}"
+  },
+  {
+   "id": "type:cmd/codegraph.NotesGraph",
+   "label": "NotesGraph",
+   "kind": "type",
+   "package": "cmd/codegraph",
+   "file": "cmd/codegraph/notes.go",
+   "line": 49,
+   "doc": "NotesGraph is the JSON document written by -notes.",
+   "signature": "type NotesGraph struct",
+   "code": "type NotesGraph struct {\n\tNodes []Note     `json:\"nodes\"`\n\tEdges []NoteEdge `json:\"edges\"`\n}"
   },
   {
    "id": "type:cmd/codegraph.builder",
@@ -1193,7 +1310,7 @@
    "kind": "type",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 89,
+   "line": 90,
    "signature": "type builder struct",
    "code": "type builder struct {\n\tmodule string\n\tfset   *token.FileSet\n\tnodes  map[string]*Node\n\tedges  map[Edge]bool\n\n\tfiles         []*parsedFile\n\tfuncsByDir    map[string]map[string]string // directory -\u003e function name -\u003e node id\n\tmethodsByName map[string][]string          // method name -\u003e node ids\n\tdeclIDs       map[*ast.FuncDecl]string     // declaration -\u003e node id\n\tsources       map[string][]string          // file path -\u003e lines\n}"
   },
@@ -1203,7 +1320,7 @@
    "kind": "type",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 81,
+   "line": 82,
    "doc": "parsedFile keeps what the second pass needs to resolve calls.",
    "signature": "type parsedFile struct",
    "code": "type parsedFile struct {\n\tdir     string\n\trel     string\n\tfile    *ast.File\n\timports map[string]string // local import name -\u003e module directory (\"\" for outside the module)\n\tdecls   []*ast.FuncDecl\n}"
@@ -1405,7 +1522,7 @@
   },
   {
    "from": "file:cmd/analisador/console_windows.go",
-   "to": "func:cmd/analisador.prepareConsole:20",
+   "to": "func:cmd/analisador.prepareConsole:30",
    "kind": "contains"
   },
   {
@@ -1650,6 +1767,11 @@
   },
   {
    "from": "file:cmd/codegraph/main.go",
+   "to": "func:cmd/codegraph.writeJSON",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/main.go",
    "to": "type:cmd/codegraph.Edge",
    "kind": "contains"
   },
@@ -1671,6 +1793,51 @@
   {
    "from": "file:cmd/codegraph/main.go",
    "to": "type:cmd/codegraph.parsedFile",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/notes.go",
+   "to": "func:cmd/codegraph.buildNotes",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/notes.go",
+   "to": "func:cmd/codegraph.extractLinks",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/notes.go",
+   "to": "func:cmd/codegraph.parseFields",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/notes.go",
+   "to": "func:cmd/codegraph.parseNote",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/notes.go",
+   "to": "func:cmd/codegraph.splitFrontmatter",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/notes.go",
+   "to": "func:cmd/codegraph.splitTitle",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/notes.go",
+   "to": "type:cmd/codegraph.Note",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/notes.go",
+   "to": "type:cmd/codegraph.NoteEdge",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/codegraph/notes.go",
+   "to": "type:cmd/codegraph.NotesGraph",
    "kind": "contains"
   },
   {
@@ -2180,7 +2347,7 @@
   },
   {
    "from": "func:cmd/analisador.main",
-   "to": "func:cmd/analisador.prepareConsole:20",
+   "to": "func:cmd/analisador.prepareConsole:30",
    "kind": "calls"
   },
   {
@@ -2266,6 +2433,16 @@
   {
    "from": "func:cmd/codegraph.buildGraph",
    "to": "func:cmd/codegraph.readModulePath",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.buildNotes",
+   "to": "func:cmd/codegraph.extractLinks",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.buildNotes",
+   "to": "func:cmd/codegraph.parseNote",
    "kind": "calls"
   },
   {
@@ -2394,8 +2571,33 @@
    "kind": "calls"
   },
   {
+   "from": "func:cmd/codegraph.main",
+   "to": "func:cmd/codegraph.buildNotes",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.main",
+   "to": "func:cmd/codegraph.writeJSON",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.parseNote",
+   "to": "func:cmd/codegraph.splitFrontmatter",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.parseNote",
+   "to": "func:cmd/codegraph.splitTitle",
+   "kind": "calls"
+  },
+  {
    "from": "func:cmd/codegraph.signature",
    "to": "func:cmd/codegraph.printNode",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/codegraph.splitFrontmatter",
+   "to": "func:cmd/codegraph.parseFields",
    "kind": "calls"
   },
   {
@@ -2781,6 +2983,11 @@
   {
    "from": "pkg:cmd/codegraph",
    "to": "file:cmd/codegraph/main.go",
+   "kind": "contains"
+  },
+  {
+   "from": "pkg:cmd/codegraph",
+   "to": "file:cmd/codegraph/notes.go",
    "kind": "contains"
   },
   {

@@ -1,6 +1,7 @@
 // Command codegraph reads the Go source of this module and writes a JSON graph
 // (packages, files, types, functions, methods and the edges between them) that
-// the /graph page draws.
+// the /graph page draws. With -notes it reads the Markdown vault in graph/
+// instead and writes the notes and their [[wikilinks]].
 package main
 
 import (
@@ -101,28 +102,37 @@ type builder struct {
 
 func main() {
 	root := flag.String("root", ".", "module root directory")
+	notes := flag.String("notes", "", "vault directory: write the note graph instead of the code graph")
 	out := flag.String("o", "", "output file (default: stdout)")
 	flag.Parse()
 
-	graph, err := buildGraph(*root)
+	var document any
+	var err error
+	if *notes != "" {
+		document, err = buildNotes(*notes, *root)
+	} else {
+		document, err = buildGraph(*root)
+	}
+	if err == nil {
+		err = writeJSON(document, *out)
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "codegraph:", err)
 		os.Exit(1)
 	}
-	data, err := json.MarshalIndent(graph, "", " ")
+}
+
+func writeJSON(document any, out string) error {
+	data, err := json.MarshalIndent(document, "", " ")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "codegraph:", err)
-		os.Exit(1)
+		return err
 	}
 	data = append(data, '\n')
-	if *out == "" {
-		os.Stdout.Write(data)
-		return
+	if out == "" {
+		_, err = os.Stdout.Write(data)
+		return err
 	}
-	if err := os.WriteFile(*out, data, outputFileMode); err != nil {
-		fmt.Fprintln(os.Stderr, "codegraph:", err)
-		os.Exit(1)
-	}
+	return os.WriteFile(out, data, outputFileMode)
 }
 
 func buildGraph(root string) (*Graph, error) {

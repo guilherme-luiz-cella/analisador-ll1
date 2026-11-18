@@ -44,6 +44,7 @@ if (Test-Path 'web/graph') {
 if (Test-Path 'cmd/codegraph') {
     New-Item -ItemType Directory -Path $graphSite -Force | Out-Null
     Invoke-Go run ./cmd/codegraph -o (Join-Path $graphSite 'graph.json')
+    Invoke-Go run ./cmd/codegraph -notes graph -o (Join-Path $graphSite 'notes.json')
 }
 
 Write-Host "site/ ready: $((Get-ChildItem $site -Recurse -File).Count) files"
