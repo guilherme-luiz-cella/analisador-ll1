@@ -2,40 +2,41 @@ package ll1
 
 import "fmt"
 
-// Token is one lexical unit of the input.
+// Token é uma unidade léxica da entrada.
 type Token struct {
-	Kind   string // terminal name ("id", "num", "+", ...) or "$"
-	Lexeme string // text as typed ("soma", "42", "+"); "$" for the end
-	Pos    int    // 1-based column in the input
+	Kind   string // nome do terminal ("id", "num", "+", ...) ou "$"
+	Lexeme string // texto como foi digitado ("soma", "42", "+"); "$" no fim
+	Pos    int    // coluna na entrada, contando a partir de 1
 }
 
-// LexicalError reports a character that does not start any token.
+// LexicalError aponta um caractere que não começa nenhum token.
 type LexicalError struct {
 	Char rune
-	Pos  int // 1-based column in the input
+	Pos  int // coluna na entrada, contando a partir de 1
 }
 
+// Error devolve a mensagem completa, com o prefixo "erro léxico".
 func (e *LexicalError) Error() string {
 	return "erro léxico: " + e.Detail()
 }
 
-// Detail describes the bad character and where it is.
+// Detail descreve o caractere inválido e onde ele está.
 func (e *LexicalError) Detail() string {
 	return fmt.Sprintf("caractere '%c' inválido na posição %d", e.Char, e.Pos)
 }
 
-// Tokenize splits the input with the lexer of the assignment grammar
-// (Default): see TokenizeFor.
+// Tokenize separa a entrada com o léxico da gramática do trabalho (Default);
+// veja TokenizeFor.
 func Tokenize(input string) ([]Token, error) {
 	return TokenizeFor(Default(), input)
 }
 
-// TokenizeFor splits the input into tokens of grammar g. A word
-// [A-Za-z_][A-Za-z0-9_]* equal to a terminal of g (a keyword such as "and"
-// or "var") becomes that terminal and any other word becomes "id"; digit
-// runs become "num"; a character that is a one-character terminal of g
-// stands for itself; spaces are skipped and anything else is a
-// *LexicalError. On success the last token is always "$".
+// TokenizeFor separa a entrada em tokens da gramática g. Uma palavra
+// [A-Za-z_][A-Za-z0-9_]* igual a um terminal de g (palavra-chave como "and"
+// ou "var") vira esse terminal, e qualquer outra palavra vira "id"; uma
+// sequência de dígitos vira "num"; um caractere que é terminal de g vale por
+// si mesmo; espaços são pulados e qualquer outra coisa é *LexicalError. Sem
+// erro, o último token é sempre "$".
 func TokenizeFor(g *Grammar, input string) ([]Token, error) {
 	runes := []rune(input)
 	var tokens []Token
@@ -72,14 +73,14 @@ func TokenizeFor(g *Grammar, input string) ([]Token, error) {
 	return tokens, nil
 }
 
-// isKeyword reports whether word is a terminal of g on its own. The names
-// "id" and "num" are not keywords: typed as words they are identifiers.
+// isKeyword diz se word é, sozinha, um terminal de g. Os nomes "id" e "num"
+// não são palavras-chave: digitados como palavras, são identificadores.
 func (g *Grammar) isKeyword(word string) bool {
 	return word != TerminalID && word != TerminalNum && g.IsTerminal(word)
 }
 
-// punctuation lists the one-character terminals of g that are not letters,
-// in Terminals order: "+ - * / ( )" for the assignment grammar.
+// punctuation lista os terminais de um caractere de g que não são letra nem
+// dígito, na ordem de Terminals: "+ - * / ( )" na gramática do trabalho.
 func (g *Grammar) punctuation() []string {
 	var result []string
 	for _, terminal := range g.Terminals {

@@ -7,11 +7,11 @@ import (
 	"testing"
 )
 
-// generatedPerPreset is how many generated sentences each preset must handle.
+// generatedPerPreset é quantas sentenças geradas cada gramática pronta tem de tratar.
 const generatedPerPreset = 200
 
-// handSets holds FIRST and FOLLOW computed by hand: the step file for the own
-// examples and steps/06-presets-research.md for the 15 sourced grammars.
+// handSets guarda FIRST e FOLLOW calculados à mão: o arquivo da etapa para os
+// exemplos próprios e steps/06-presets-research.md para as 15 gramáticas com fonte.
 type handSets struct {
 	first, follow map[string][]string
 }
@@ -215,8 +215,8 @@ var presetHandSets = map[string]handSets{
 	},
 }
 
-// Sentences checked on top of each preset's own examples, mostly typed
-// without spaces to exercise the grammar-aware lexer.
+// Sentenças conferidas além dos exemplos de cada gramática, quase todas sem
+// espaços, para exercitar o léxico que conhece a gramática.
 var extraAccepted = map[string][]string{
 	"expressoes":           {"a-b/c+d*(e-1)"},
 	"booleanas":            {"not not x", "(a or b) and c"},
@@ -442,6 +442,22 @@ func TestGeneratedInvalidSentencesAreRejectedForEveryLL1Preset(t *testing.T) {
 	}
 }
 
+func TestGeneratedInvalidSentencesAreNeverEmpty(t *testing.T) {
+	for _, p := range Presets() {
+		table := BuildTable(p.Grammar)
+		rng := rand.New(rand.NewSource(1))
+		for i := 0; i < 500; i++ {
+			sentence := GenerateInvalid(p.Grammar, rng)
+			if strings.TrimSpace(sentence) == "" {
+				t.Fatalf("%s: GenerateInvalid gave an empty sentence (call %d)", p.ID, i+1)
+			}
+			if Parse(table, sentence).Accepted {
+				t.Fatalf("%s: invalid %q accepted", p.ID, sentence)
+			}
+		}
+	}
+}
+
 func TestGenerateTerminatesForTheLeftRecursiveGrammar(t *testing.T) {
 	g := presetByIDForTest(t, naoLL1ID).Grammar
 	rng := rand.New(rand.NewSource(17))
@@ -462,6 +478,20 @@ func TestGenerateTerminatesForTheLeftRecursiveGrammar(t *testing.T) {
 	}
 	if GenerateInvalid(g, rng) == "" {
 		t.Error("GenerateInvalid gave an empty sentence")
+	}
+}
+
+func TestEpsilonInsideALongerBodyIsDropped(t *testing.T) {
+	g := grammarFrom(`
+		A -> ε b A | ε ε | c`)
+	want := [][]string{{"b", "A"}, {Epsilon}, {"c"}}
+	for i, p := range g.Productions {
+		if !reflect.DeepEqual(p.Body, want[i]) {
+			t.Errorf("production %d body = %v, want %v", p.Number, p.Body, want[i])
+		}
+	}
+	if result := Parse(BuildTable(g), "b b c"); !result.Accepted {
+		t.Errorf("b b c rejected: %s", result.Message)
 	}
 }
 

@@ -2,29 +2,27 @@ package ll1
 
 import "fmt"
 
-// Table is the LL(1) parsing table M[non-terminal, terminal].
+// Table é a tabela de parsing LL(1) M[não terminal, terminal].
 type Table struct {
 	Grammar   *Grammar
 	Columns   []string                  // Terminals + "$"
-	Cells     map[string]map[string]int // non-terminal -> column -> production Number (missing = error)
-	Conflicts []string                  // empty for an LL(1) grammar
+	Cells     map[string]map[string]int // não terminal -> coluna -> número da produção (ausente = erro)
+	Conflicts []string                  // vazio numa gramática LL(1)
 
-	// ConflictCells lists each cell claimed by more than one production,
-	// in the order the conflicts were found.
+	// ConflictCells lista cada célula pedida por mais de uma produção, na
+	// ordem em que os conflitos apareceram.
 	ConflictCells []ConflictCell
 }
 
-// ConflictCell is a table cell that more than one production claims.
+// ConflictCell é uma célula da tabela pedida por mais de uma produção.
 type ConflictCell struct {
 	NonTerminal string
 	Column      string
-	Numbers     []int // every production claiming the cell; the first keeps it
+	Numbers     []int // todas as produções que pedem a célula; a primeira fica com ela
 }
 
-// BuildTable fills the table from FIRST and FOLLOW: production A -> α goes
-// in M[A, a] for every terminal a in FIRST(α), and, when ε is in FIRST(α),
-// in M[A, b] for every b in FOLLOW(A). A cell claimed twice is a conflict;
-// the first production keeps the cell.
+// BuildTable preenche a tabela a partir de FIRST e FOLLOW. Uma célula pedida
+// duas vezes é um conflito; a primeira produção fica com a célula.
 func BuildTable(g *Grammar) *Table {
 	t := &Table{
 		Grammar: g,
@@ -39,6 +37,9 @@ func BuildTable(g *Grammar) *Table {
 	for _, p := range g.Productions {
 		bodyFirst := g.firstOfSequence(first, p.Body)
 		for _, column := range t.Columns {
+			// Regra 1 da tabela: para A → α, cada a ∈ FIRST(α) põe A → α em M[A, a].
+			// Regra 2 da tabela: se ε ∈ FIRST(α), cada b ∈ FOLLOW(A), inclusive $,
+			// põe A → α em M[A, b].
 			if bodyFirst[column] || (bodyFirst[Epsilon] && follow[p.Head][column]) {
 				t.place(p, column)
 			}
@@ -47,6 +48,8 @@ func BuildTable(g *Grammar) *Table {
 	return t
 }
 
+// place escreve a produção na célula. Célula já ocupada quer dizer que a
+// gramática não é LL(1): a primeira produção fica e o conflito é anotado.
 func (t *Table) place(p Production, column string) {
 	row := t.Cells[p.Head]
 	if existing, taken := row[column]; taken {
@@ -58,6 +61,8 @@ func (t *Table) place(p Production, column string) {
 	row[column] = p.Number
 }
 
+// recordConflict junta numa só entrada todas as produções que disputam a
+// mesma célula, para a tela mostrar o choque inteiro.
 func (t *Table) recordConflict(p Production, column string, existing int) {
 	for i, cell := range t.ConflictCells {
 		if cell.NonTerminal == p.Head && cell.Column == column {
@@ -72,16 +77,12 @@ func (t *Table) recordConflict(p Production, column string, existing int) {
 	})
 }
 
-// Production returns the production in M[nonTerminal, column], if any.
+// Production devolve a produção em M[nonTerminal, column], se houver.
 func (t *Table) Production(nonTerminal, column string) (Production, bool) {
 	number, ok := t.Cells[nonTerminal][column]
 	if !ok {
 		return Production{}, false
 	}
-	for _, p := range t.Grammar.Productions {
-		if p.Number == number {
-			return p, true
-		}
-	}
-	return Production{}, false
+	// Os números começam em 1 e seguem a ordem de Productions.
+	return t.Grammar.Productions[number-1], true
 }

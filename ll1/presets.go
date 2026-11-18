@@ -2,17 +2,17 @@ package ll1
 
 import "strings"
 
-// PresetGroup says where a preset grammar comes from; the web groups the
-// dropdown by it and the CLI groups its list.
+// PresetGroup diz de onde vem uma gramática pronta; a web agrupa a lista de
+// escolha por ele e o terminal agrupa a sua lista.
 type PresetGroup int
 
 const (
-	GroupAssignment PresetGroup = iota // the graded assignment grammar
-	GroupExamples                      // small examples written for this project
-	GroupLiterature                    // published grammars, adapted to LL(1)
+	GroupAssignment PresetGroup = iota // a gramática avaliada no trabalho
+	GroupExamples                      // exemplos pequenos escritos para este projeto
+	GroupLiterature                    // gramáticas publicadas, adaptadas para LL(1)
 )
 
-// Label is the pt-BR heading of the group.
+// Label é o título do grupo mostrado na tela.
 func (g PresetGroup) Label() string {
 	switch g {
 	case GroupAssignment:
@@ -24,28 +24,28 @@ func (g PresetGroup) Label() string {
 	}
 }
 
-// DefaultPresetID names the assignment grammar, the default selection.
+// DefaultPresetID é o id da gramática do trabalho, a escolhida por padrão.
 const DefaultPresetID = "expressoes"
 
-// Preset is a fixed example grammar the user can pick. Examples are in the
-// language (accepted, except by a grammar with conflicts, which refuses all);
-// InvalidExamples must be rejected.
+// Preset é uma gramática pronta que o usuário pode escolher. Examples estão
+// na linguagem (são aceitos, menos numa gramática com conflitos, que recusa
+// tudo); InvalidExamples têm de ser rejeitados.
 type Preset struct {
 	ID              string
 	Name            string
 	Description     string
 	Group           PresetGroup
-	Author          string // empty for the project's own grammars
-	Source          string // title of the publication
+	Author          string // vazio nas gramáticas do próprio projeto
+	Source          string // título da publicação
 	URL             string
-	Adapted         bool // the published grammar was changed to be LL(1)
+	Adapted         bool // a gramática publicada foi alterada para ser LL(1)
 	Grammar         *Grammar
 	Examples        []string
 	InvalidExamples []string
 }
 
-// Presets lists every preset, the assignment grammar first. Each call builds
-// fresh grammars, so callers may keep or change them freely.
+// Presets lista todas as gramáticas prontas, a do trabalho primeiro. Cada
+// chamada monta gramáticas novas, então quem chama pode guardá-las ou mudá-las.
 func Presets() []Preset {
 	return []Preset{
 		{
@@ -397,7 +397,7 @@ func Presets() []Preset {
 	}
 }
 
-// PresetByID finds a preset by its id.
+// PresetByID acha uma gramática pronta pelo id.
 func PresetByID(id string) (Preset, bool) {
 	for _, p := range Presets() {
 		if p.ID == id {
@@ -407,13 +407,13 @@ func PresetByID(id string) (Preset, bool) {
 	return Preset{}, false
 }
 
-// alternativeSeparator splits the alternatives of one rule in grammarFrom.
+// alternativeSeparator separa as alternativas de uma regra em grammarFrom.
 const alternativeSeparator = "|"
 
-// grammarFrom reads one rule per line, "A -> α | β", with symbols separated
-// by spaces. The heads, in order, are the non-terminals (the first is the
-// start symbol); every other symbol is a terminal, listed in order of first
-// appearance. Productions are numbered in reading order.
+// grammarFrom lê uma regra por linha, "A -> α | β", com os símbolos separados
+// por espaço. As cabeças, em ordem, são os não terminais (a primeira é o
+// símbolo inicial); todo outro símbolo é terminal, na ordem em que aparece.
+// As produções são numeradas na ordem de leitura.
 func grammarFrom(rules string) *Grammar {
 	g := &Grammar{}
 	type rule struct{ head, body string }
@@ -430,7 +430,7 @@ func grammarFrom(rules string) *Grammar {
 	g.Start = g.NonTerminals[0]
 	for _, r := range parsed {
 		for _, alternative := range strings.Split(r.body, alternativeSeparator) {
-			body := strings.Fields(alternative)
+			body := withoutInnerEpsilon(strings.Fields(alternative))
 			for _, symbol := range body {
 				if symbol != Epsilon && !g.IsNonTerminal(symbol) && !g.IsTerminal(symbol) {
 					g.Terminals = append(g.Terminals, symbol)
@@ -440,4 +440,22 @@ func grammarFrom(rules string) *Grammar {
 		}
 	}
 	return g
+}
+
+// withoutInnerEpsilon tira o ε de um corpo com outros símbolos ("ε b" é só
+// "b"); ε só fica quando é o corpo inteiro, senão o analisador o empilharia.
+func withoutInnerEpsilon(body []string) []string {
+	if len(body) <= 1 {
+		return body
+	}
+	var result []string
+	for _, symbol := range body {
+		if symbol != Epsilon {
+			result = append(result, symbol)
+		}
+	}
+	if len(result) == 0 {
+		return []string{Epsilon}
+	}
+	return result
 }

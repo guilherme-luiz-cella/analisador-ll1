@@ -7,23 +7,25 @@ import (
 	"strings"
 )
 
-// identifierLexemes are the names used for generated "id" tokens.
+// identifierLexemes são nomes curtos para caber na tela do projetor.
 var identifierLexemes = []string{"x", "y", "z", "a", "b", "soma", "total"}
 
-// maxNumberLexeme is the largest value used for generated "num" tokens.
+// maxNumberLexeme mantém os números gerados com até dois dígitos, fáceis de ler.
 const maxNumberLexeme = 99
 
-// invalidBaseDepth is the depth of the valid sentence GenerateInvalid mutates.
-const invalidBaseDepth = 4
+// DefaultMaxDepth deixa as sentenças geradas curtas o bastante para ler o
+// rastro no projetor; o terminal, a web e GenerateInvalid usam este valor.
+const DefaultMaxDepth = 4
 
-// illegalCharacters are inserted to cause lexical errors; those that are
-// terminals of the grammar at hand are skipped.
+// illegalCharacters provocam erro léxico; os que forem terminais da gramática
+// atual são pulados.
 var illegalCharacters = []string{"#", "@", "!", "?", "&", "%", ";"}
 
-// Generate builds a random valid sentence by a leftmost derivation from the
-// start symbol. Below maxDepth every production is equally likely; from
-// maxDepth on, only the productions that finish the derivation fastest are
-// chosen. Tokens are joined by spaces: "x + 3 * ( y )".
+// Generate monta uma sentença válida aleatória por derivação mais à esquerda
+// a partir do símbolo inicial. Abaixo de maxDepth toda produção tem a mesma
+// chance; a partir dele só entram as que terminam a derivação mais rápido.
+// Os tokens saem separados por espaço: "x + 3 * ( y )". Supõe que todo não
+// terminal derive alguma sentença (vale para todas as gramáticas prontas).
 func Generate(g *Grammar, rng *rand.Rand, maxDepth int) string {
 	heights := g.productionHeights()
 	var lexemes []string
@@ -45,23 +47,28 @@ func Generate(g *Grammar, rng *rand.Rand, maxDepth int) string {
 	return strings.Join(lexemes, " ")
 }
 
-// GenerateInvalid mutates a valid sentence (drops a token, duplicates an
-// operator, adds an unbalanced parenthesis or inserts an illegal character)
-// and retries until the parser rejects the result.
+// GenerateInvalid estraga uma sentença válida (tira um token, duplica um
+// operador, põe um parêntese sem par ou um caractere ilegal) e tenta de novo
+// até o analisador rejeitar o resultado.
 func GenerateInvalid(g *Grammar, rng *rand.Rand) string {
 	table := BuildTable(g)
 	for {
-		lexemes := strings.Fields(Generate(g, rng, invalidBaseDepth))
+		lexemes := strings.Fields(Generate(g, rng, DefaultMaxDepth))
 		candidate := strings.Join(mutate(g, lexemes, rng), " ")
+		// Tirar o único token de "x" deixa a entrada vazia: é rejeitada, mas
+		// não mostra nada na tela, então tenta de novo.
+		if strings.TrimSpace(candidate) == "" {
+			continue
+		}
 		if !Parse(table, candidate).Accepted {
 			return candidate
 		}
 	}
 }
 
-// mutate applies one random kind of damage to a copy of the lexemes. The
-// "operators" are the grammar's one-character terminals. A mutation that
-// cannot apply returns the lexemes unchanged, and GenerateInvalid retries.
+// mutate aplica um estrago aleatório numa cópia dos lexemas. Os "operadores"
+// são os terminais de um caractere da gramática. Um estrago que não se aplica
+// devolve os lexemas sem mudança, e GenerateInvalid tenta de novo.
 func mutate(g *Grammar, lexemes []string, rng *rand.Rand) []string {
 	operators := g.punctuation()
 	const (
@@ -128,8 +135,8 @@ func lexemeFor(terminal string, rng *rand.Rand) string {
 	}
 }
 
-// chooseProduction picks uniformly, or among the shortest-finishing
-// productions when shortest is set.
+// chooseProduction sorteia entre todas as opções ou, com shortest, só entre
+// as que terminam a derivação mais rápido, para a recursão acabar.
 func chooseProduction(options []Production, heights map[int]int, rng *rand.Rand, shortest bool) Production {
 	if shortest {
 		best := math.MaxInt
@@ -148,8 +155,9 @@ func chooseProduction(options []Production, heights map[int]int, rng *rand.Rand,
 	return options[rng.Intn(len(options))]
 }
 
-// productionHeights gives, per production number, the height of the
-// shortest derivation tree that starts with it (fixed-point computation).
+// productionHeights dá, por número de produção, a altura da menor árvore de
+// derivação que começa por ela. Ponto fixo: a altura de um não terminal só
+// cai quando a de algum símbolo do corpo cai, então repete até parar.
 func (g *Grammar) productionHeights() map[int]int {
 	symbolHeight := map[string]int{}
 	for _, nt := range g.NonTerminals {

@@ -1,51 +1,52 @@
-// Package ll1 implements a table-driven (non-recursive) predictive LL(1)
-// parser for a fixed arithmetic expression grammar: FIRST and FOLLOW sets,
-// the parsing table, a lexer, the stack parser and a sentence generator.
+// Package ll1 implementa o analisador LL(1) preditivo tabular (não
+// recursivo): conjuntos FIRST e FOLLOW, tabela de parsing, analisador léxico,
+// analisador com pilha e gerador de sentenças. A gramática do trabalho é a
+// das expressões aritméticas; as outras gramáticas prontas ficam em presets.go.
 package ll1
 
 import "strings"
 
-// Epsilon is the empty string symbol.
+// Epsilon é o símbolo da cadeia vazia.
 const Epsilon = "ε"
 
-// EndMarker marks the end of the input and the bottom of the stack.
+// EndMarker marca o fim da entrada e o fundo da pilha.
 const EndMarker = "$"
 
-// Terminal names produced by the lexer for identifiers and numbers.
+// Nomes dos terminais que o léxico dá a identificadores e números.
 const (
 	TerminalID  = "id"
 	TerminalNum = "num"
 )
 
-// Arrow separates the head from the body when a production is printed.
+// Arrow separa a cabeça do corpo quando uma produção é impressa.
 const Arrow = " -> "
 
-// Production is one numbered grammar rule.
+// Production é uma regra numerada da gramática.
 type Production struct {
-	Number int      // 1-based
-	Head   string   // non-terminal on the left side
-	Body   []string // []string{Epsilon} for the empty production
+	Number int      // começa em 1 e é a posição em Grammar.Productions
+	Head   string   // não terminal do lado esquerdo
+	Body   []string // []string{Epsilon} na produção vazia
 }
 
-// IsEmpty reports whether the production derives the empty string directly.
+// IsEmpty diz se a produção deriva a cadeia vazia diretamente (A -> ε).
 func (p Production) IsEmpty() bool {
 	return len(p.Body) == 1 && p.Body[0] == Epsilon
 }
 
-// String prints the production as "E' -> + T E'".
+// String imprime a produção como "E' -> + T E'".
 func (p Production) String() string {
 	return p.Head + Arrow + strings.Join(p.Body, " ")
 }
 
-// Grammar is a context-free grammar with symbols kept in display order.
+// Grammar é uma gramática livre de contexto com os símbolos na ordem de exibição.
 type Grammar struct {
 	Start        string
-	NonTerminals []string // display order: E E' T T' F
-	Terminals    []string // id num + - * / ( )   (no ε, no $)
+	NonTerminals []string // ordem de exibição: E E' T T' F
+	Terminals    []string // id num + - * / ( )   (sem ε e sem $)
 	Productions  []Production
 }
 
-// Default returns the fixed expression grammar of the assignment.
+// Default devolve a gramática fixa das expressões, a do trabalho.
 func Default() *Grammar {
 	bodies := []struct {
 		head string
@@ -78,17 +79,17 @@ func Default() *Grammar {
 	return g
 }
 
-// IsTerminal reports whether s is one of the grammar's terminals.
+// IsTerminal diz se s é um terminal da gramática.
 func (g *Grammar) IsTerminal(s string) bool {
 	return contains(g.Terminals, s)
 }
 
-// IsNonTerminal reports whether s is one of the grammar's non-terminals.
+// IsNonTerminal diz se s é um não terminal da gramática.
 func (g *Grammar) IsNonTerminal(s string) bool {
 	return contains(g.NonTerminals, s)
 }
 
-// ProductionsOf returns the productions whose head is nonTerminal, in order.
+// ProductionsOf devolve, em ordem, as produções cuja cabeça é nonTerminal.
 func (g *Grammar) ProductionsOf(nonTerminal string) []Production {
 	var result []Production
 	for _, p := range g.Productions {
@@ -99,7 +100,7 @@ func (g *Grammar) ProductionsOf(nonTerminal string) []Production {
 	return result
 }
 
-// String prints one line per non-terminal with alternatives grouped:
+// String imprime uma linha por não terminal, com as alternativas juntas:
 // "E' -> + T E' | - T E' | ε".
 func (g *Grammar) String() string {
 	var sb strings.Builder

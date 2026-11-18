@@ -2,36 +2,36 @@ package ll1
 
 import "fmt"
 
-// Step is one row of the parsing trace.
+// Step é uma linha do rastro da análise.
 type Step struct {
 	Number int
-	Stack  []string // bottom first, so the top is the last element; starts as ["$", "E"]
-	Input  []string // remaining token kinds, current first, ends with "$"
-	Action string   // Portuguese, e.g. "E -> T E'", "Casa 'id' (soma)", "Aceita", "Erro: ..."
+	Stack  []string // fundo primeiro, então o topo é o último; começa como ["$", "E"]
+	Input  []string // tipos dos tokens que faltam, o atual primeiro, termina em "$"
+	Action string   // ex.: "E -> T E'", "Casa 'id' (soma)", "Aceita", "Erro: ..."
 }
 
-// Result is the outcome of parsing one sentence.
+// Result é o resultado da análise de uma sentença.
 type Result struct {
 	Accepted bool
-	Message  string // Portuguese final message
+	Message  string // mensagem final mostrada ao usuário
 	Tokens   []Token
 	Steps    []Step
 }
 
-// Fixed texts of the trace and of the final message.
+// Textos fixos do rastro e da mensagem final.
 const (
 	ActionAccept    = "Aceita"
 	ErrorPrefix     = "Erro"
 	MessageAccepted = "Sentença ACEITA: a entrada foi reconhecida pela gramática."
 	messageRejected = "Sentença REJEITADA: %s."
-	// MessageNotLL1 is why Parse refuses a table with conflicts.
+	// MessageNotLL1 explica por que Parse recusa uma tabela com conflitos.
 	MessageNotLL1 = "A gramática não é LL(1): a tabela tem conflitos"
 )
 
-// Parse runs the non-recursive predictive parser over input with the
-// lexer of the table's grammar, recording a Step for every action,
-// including the final accept or error. A table with conflicts is refused
-// with a single error step instead of guessing a production.
+// Parse roda o analisador preditivo não recursivo sobre a entrada, com o
+// léxico da gramática da tabela, e grava um Step para cada ação, inclusive o
+// aceite ou o erro final. Uma tabela com conflitos é recusada com um único
+// passo de erro, em vez de adivinhar uma produção.
 func Parse(t *Table, input string) Result {
 	start := []string{EndMarker, t.Grammar.Start}
 	if len(t.Conflicts) > 0 {
@@ -39,13 +39,15 @@ func Parse(t *Table, input string) Result {
 	}
 	tokens, err := TokenizeFor(t.Grammar, input)
 	if err != nil {
-		// TokenizeFor only fails with a *LexicalError.
+		// TokenizeFor só falha com *LexicalError.
 		return lexicalFailure(t.Grammar, start, input, err.(*LexicalError))
 	}
 
+	// Configuração inicial: pilha $ S, com o topo à direita, e entrada w$.
 	result := Result{Tokens: tokens}
 	stack := start
 	position := 0
+	// X é o topo da pilha e a é o token atual; cada volta faz uma ação.
 	for {
 		top := stack[len(stack)-1]
 		current := tokens[position]
@@ -56,6 +58,7 @@ func Parse(t *Table, input string) Result {
 		}
 
 		switch {
+		// X = $ e a = $: pilha e entrada terminaram juntas, a sentença é aceita.
 		case top == EndMarker && current.Kind == EndMarker:
 			step.Action = ActionAccept
 			result.Steps = append(result.Steps, step)
@@ -63,6 +66,8 @@ func Parse(t *Table, input string) Result {
 			result.Message = MessageAccepted
 			return result
 
+		// X terminal (ou $): tem de ser igual ao token atual; casou, desempilha X
+		// e avança a entrada.
 		case !t.Grammar.IsNonTerminal(top):
 			if top != current.Kind {
 				reason := fmt.Sprintf("%s, esperado %s", unexpected(current), describeSymbol(top))
@@ -72,6 +77,7 @@ func Parse(t *Table, input string) Result {
 			stack = stack[:len(stack)-1]
 			position++
 
+		// X não terminal: consulta M[X, a]; célula vazia é erro sintático.
 		default:
 			p, ok := t.Production(top, current.Kind)
 			if !ok {
@@ -80,6 +86,8 @@ func Parse(t *Table, input string) Result {
 			}
 			step.Action = p.String()
 			stack = stack[:len(stack)-1]
+			// Troca X por Y1...Yk empilhando de trás para frente, para Y1 ficar
+			// no topo (derivação mais à esquerda); X → ε só desempilha.
 			if !p.IsEmpty() {
 				for i := len(p.Body) - 1; i >= 0; i-- {
 					stack = append(stack, p.Body[i])
@@ -90,6 +98,8 @@ func Parse(t *Table, input string) Result {
 	}
 }
 
+// reject fecha o rastro com o passo de erro e usa o mesmo motivo na mensagem
+// final, para a tela e o rastro dizerem a mesma coisa.
 func reject(result Result, step Step, reason string) Result {
 	step.Action = ErrorPrefix + ": " + reason
 	result.Steps = append(result.Steps, step)
@@ -97,12 +107,12 @@ func reject(result Result, step Step, reason string) Result {
 	return result
 }
 
-// lexicalFailure builds the single-step trace of a sentence rejected by the
-// lexer: the input column shows the tokens read so far and the bad character.
+// lexicalFailure monta o rastro de um só passo de uma sentença barrada pelo
+// léxico: a coluna da entrada mostra os tokens lidos até ali e o caractere inválido.
 func lexicalFailure(g *Grammar, start []string, input string, lexErr *LexicalError) Result {
 	prefix := string([]rune(input)[:lexErr.Pos-1])
 	read, _ := TokenizeFor(g, prefix)
-	read = read[:len(read)-1] // drop the "$" of the prefix
+	read = read[:len(read)-1] // tira o "$" do prefixo
 	remaining := append(kinds(read), string(lexErr.Char), EndMarker)
 	step := Step{
 		Number: 1,
@@ -117,9 +127,9 @@ func lexicalFailure(g *Grammar, start []string, input string, lexErr *LexicalErr
 	}
 }
 
-// refuseConflicts builds the single-step trace of a sentence that is not
-// analyzed because the grammar is not LL(1). The input column shows the
-// tokens when the sentence has no lexical error.
+// refuseConflicts monta o rastro de um só passo de uma sentença que não é
+// analisada porque a gramática não é LL(1). A coluna da entrada mostra os
+// tokens quando a sentença não tem erro léxico.
 func refuseConflicts(g *Grammar, start []string, input string) Result {
 	tokens, err := TokenizeFor(g, input)
 	remaining := []string{EndMarker}
@@ -145,6 +155,8 @@ func describeSymbol(symbol string) string {
 	return "'" + symbol + "'"
 }
 
+// unexpected descreve o token que travou a análise: o lexema e a posição
+// ajudam o usuário a achar o erro no que digitou.
 func unexpected(token Token) string {
 	if token.Kind == EndMarker {
 		return "fim da entrada inesperado"
@@ -152,8 +164,8 @@ func unexpected(token Token) string {
 	return fmt.Sprintf("token '%s' inesperado na posição %d", token.Lexeme, token.Pos)
 }
 
-// matchAction reads "Casa 'id' (soma)", or just "Casa '+'" when the lexeme
-// is the terminal itself.
+// matchAction escreve "Casa 'id' (soma)", ou só "Casa '+'" quando o lexema é
+// o próprio terminal.
 func matchAction(token Token) string {
 	if token.Lexeme == token.Kind {
 		return fmt.Sprintf("Casa '%s'", token.Kind)

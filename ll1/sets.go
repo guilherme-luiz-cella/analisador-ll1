@@ -1,9 +1,14 @@
 package ll1
 
-// symbolSet is an unordered set of grammar symbols used while iterating.
+// symbolSet é um conjunto de símbolos sem ordem, usado durante as repetições;
+// a ordem de exibição só é aplicada no fim, por ordered.
 type symbolSet map[string]bool
 
-// addAll adds every symbol of other except skip and reports whether s grew.
+// noSkip é o valor de skip em addAll quando nenhum símbolo deve ficar de fora.
+const noSkip = ""
+
+// addAll junta todos os símbolos de other, menos skip, e diz se s cresceu.
+// É esse "cresceu" que decide se o ponto fixo precisa de mais uma volta.
 func (s symbolSet) addAll(other symbolSet, skip string) bool {
 	grew := false
 	for symbol := range other {
@@ -15,8 +20,8 @@ func (s symbolSet) addAll(other symbolSet, skip string) bool {
 	return grew
 }
 
-// First computes FIRST of every non-terminal with the fixed-point algorithm.
-// Each set is ordered like Terminals, with ε last when present.
+// First calcula o FIRST de cada não terminal pelo método do ponto fixo.
+// Cada conjunto sai na ordem de Terminals, com ε no fim quando presente.
 func (g *Grammar) First() map[string][]string {
 	first := g.firstSets()
 	result := make(map[string][]string, len(first))
@@ -26,14 +31,14 @@ func (g *Grammar) First() map[string][]string {
 	return result
 }
 
-// FirstOfSequence returns FIRST of a sequence of symbols, ordered like
-// Terminals with ε last. An empty sequence (or just ε) gives {ε}.
+// FirstOfSequence devolve o FIRST de uma sequência de símbolos, na ordem de
+// Terminals com ε no fim. Uma sequência vazia (ou só ε) dá {ε}.
 func (g *Grammar) FirstOfSequence(seq []string) []string {
 	return g.ordered(g.firstOfSequence(g.firstSets(), seq), Epsilon)
 }
 
-// Follow computes FOLLOW of every non-terminal with the fixed-point algorithm.
-// Each set is ordered like Terminals, with $ last when present.
+// Follow calcula o FOLLOW de cada não terminal pelo método do ponto fixo.
+// Cada conjunto sai na ordem de Terminals, com $ no fim quando presente.
 func (g *Grammar) Follow() map[string][]string {
 	follow := g.followSets(g.firstSets())
 	result := make(map[string][]string, len(follow))
@@ -43,16 +48,19 @@ func (g *Grammar) Follow() map[string][]string {
 	return result
 }
 
-// firstSets repeats the FIRST rules until no set changes.
+// firstSets aplica as regras do FIRST até nenhum conjunto mudar.
 func (g *Grammar) firstSets() map[string]symbolSet {
 	first := make(map[string]symbolSet, len(g.NonTerminals))
 	for _, nt := range g.NonTerminals {
 		first[nt] = symbolSet{}
 	}
+	// Ponto fixo: um FIRST depende de outros ainda incompletos, então repete
+	// as regras até nenhum conjunto crescer.
 	for changed := true; changed; {
 		changed = false
 		for _, p := range g.Productions {
-			if first[p.Head].addAll(g.firstOfSequence(first, p.Body), "") {
+			// Para A → X1...Xn, FIRST(A) recebe FIRST(X1...Xn).
+			if first[p.Head].addAll(g.firstOfSequence(first, p.Body), noSkip) {
 				changed = true
 			}
 		}
@@ -60,34 +68,39 @@ func (g *Grammar) firstSets() map[string]symbolSet {
 	return first
 }
 
-// firstOfSequence uses the current (possibly partial) FIRST sets.
+// firstOfSequence usa os conjuntos FIRST atuais, talvez ainda parciais.
 func (g *Grammar) firstOfSequence(first map[string]symbolSet, seq []string) symbolSet {
 	result := symbolSet{}
 	for _, symbol := range seq {
 		if symbol == Epsilon {
 			continue
 		}
+		// FIRST de um terminal é ele mesmo, e a sequência começa por ele.
 		if !g.IsNonTerminal(symbol) {
 			result[symbol] = true
 			return result
 		}
+		// Soma FIRST(Xi) sem ε; só passa para Xi+1 se Xi deriva ε.
 		result.addAll(first[symbol], Epsilon)
 		if !first[symbol][Epsilon] {
 			return result
 		}
 	}
-	// Every symbol can vanish (or the sequence is empty).
+	// Todos os Xi derivam ε (ou o corpo é ε), então ε ∈ FIRST.
 	result[Epsilon] = true
 	return result
 }
 
-// followSets repeats the FOLLOW rules until no set changes.
+// followSets aplica as regras do FOLLOW até nenhum conjunto mudar.
 func (g *Grammar) followSets(first map[string]symbolSet) map[string]symbolSet {
 	follow := make(map[string]symbolSet, len(g.NonTerminals))
 	for _, nt := range g.NonTerminals {
 		follow[nt] = symbolSet{}
 	}
+	// Regra 1 do FOLLOW: $ ∈ FOLLOW(S), S o símbolo inicial.
 	follow[g.Start][EndMarker] = true
+	// Ponto fixo: a regra 3 copia FOLLOW de um não terminal para outro, então
+	// repete até nada mudar.
 	for changed := true; changed; {
 		changed = false
 		for _, p := range g.Productions {
@@ -95,11 +108,14 @@ func (g *Grammar) followSets(first map[string]symbolSet) map[string]symbolSet {
 				if !g.IsNonTerminal(symbol) {
 					continue
 				}
+				// Regra 2 do FOLLOW: A → αBβ, FIRST(β) − {ε} entra em FOLLOW(B).
 				rest := g.firstOfSequence(first, p.Body[i+1:])
 				if follow[symbol].addAll(rest, Epsilon) {
 					changed = true
 				}
-				if rest[Epsilon] && follow[symbol].addAll(follow[p.Head], "") {
+				// Regra 3 do FOLLOW: A → αB, ou A → αBβ com ε ∈ FIRST(β),
+				// FOLLOW(A) entra em FOLLOW(B).
+				if rest[Epsilon] && follow[symbol].addAll(follow[p.Head], noSkip) {
 					changed = true
 				}
 			}
@@ -108,7 +124,8 @@ func (g *Grammar) followSets(first map[string]symbolSet) map[string]symbolSet {
 	return follow
 }
 
-// ordered lists the set in Terminals order, then the extra symbol if present.
+// ordered lista o conjunto na ordem de Terminals e põe extra no fim, se estiver
+// nele, para a tela mostrar sempre a mesma ordem.
 func (g *Grammar) ordered(set symbolSet, extra string) []string {
 	result := []string{}
 	for _, t := range g.Terminals {
