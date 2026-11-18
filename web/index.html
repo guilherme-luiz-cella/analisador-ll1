@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Analisador sintático LL(1) top-down preditivo tabular, executando no navegador.">
+  <title>Analisador Sintático LL(1) — Top-Down Preditivo Tabular</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="loading" class="loading" role="status" aria-live="polite">
+    <div class="loading-box">
+      <span class="spinner" aria-hidden="true"></span>
+      <span id="loading-text">Carregando o analisador…</span>
+    </div>
+  </div>
+
+  <header class="masthead">
+    <div class="wrap">
+      <p class="motif mono" aria-hidden="true">E → T E′ &nbsp; E′ → + T E′ | ε</p>
+      <h1>Analisador Sintático LL(1) — Top-Down Preditivo Tabular</h1>
+      <p class="subtitle">Compiladores · URI Erechim</p>
+      <nav class="nav" aria-label="Seções">
+        <a href="#gramatica">Gramática</a>
+        <a href="#conjuntos">FIRST e FOLLOW</a>
+        <a href="#tabela">Tabela de Parsing</a>
+        <a href="#analise">Análise</a>
+        <a href="/graph/">Grafo do código</a>
+        <a class="github-link" href="https://github.com/guilherme-luiz-cella/analisador-ll1" target="_blank" rel="noopener">
+          <svg class="icon" viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.5 7.5 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+          Código no GitHub
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="pair">
+      <section id="gramatica" class="card" aria-labelledby="h-gramatica">
+        <h2 id="h-gramatica">Gramática</h2>
+        <p class="hint">Símbolo inicial <span class="sym nt mono">E</span>. Não terminais em azul, terminais em laranja, <span class="sym eps mono">ε</span> é a produção vazia.</p>
+        <ol id="productions" class="productions mono"></ol>
+        <details class="grouped">
+          <summary>Forma agrupada</summary>
+          <pre id="grouped" class="mono"></pre>
+        </details>
+      </section>
+
+      <section id="conjuntos" class="card" aria-labelledby="h-conjuntos">
+        <h2 id="h-conjuntos">FIRST e FOLLOW</h2>
+        <p class="hint">Calculados pelo programa a partir da gramática.</p>
+        <div class="scroll">
+          <table id="sets-table" class="data">
+            <thead><tr><th scope="col">Não terminal</th><th scope="col">FIRST</th><th scope="col">FOLLOW</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <section id="tabela" class="card" aria-labelledby="h-tabela">
+      <h2 id="h-tabela">Tabela de Parsing</h2>
+      <p id="table-note" class="hint"></p>
+      <div class="scroll"><div id="parse-table"></div></div>
+    </section>
+
+    <section id="analise" class="card" aria-labelledby="h-analise">
+      <h2 id="h-analise">Análise</h2>
+
+      <form id="analyze-form" autocomplete="off" novalidate>
+        <label for="sentence">Sentença</label>
+        <div class="input-row">
+          <input id="sentence" class="mono" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="ex.: a + b * c" disabled>
+          <button id="btn-analyze" type="submit" class="btn primary" disabled>Analisar</button>
+        </div>
+        <div class="btn-row">
+          <button id="btn-valid" type="button" class="btn" disabled>Gerar válida</button>
+          <button id="btn-invalid" type="button" class="btn" disabled>Gerar inválida</button>
+          <button id="btn-clear" type="button" class="btn ghost" disabled>Limpar</button>
+        </div>
+        <p class="examples">Exemplos:
+          <button type="button" class="example mono" data-example="a+b*c">a+b*c</button>
+          <button type="button" class="example mono" data-example="(x+1)*y">(x+1)*y</button>
+          <button type="button" class="example mono" data-example="a+">a+</button>
+          <button type="button" class="example mono" data-example="2 $ 3">2 $ 3</button>
+        </p>
+      </form>
+
+      <div id="result" hidden>
+        <div id="banner" class="banner" role="status" aria-live="polite">
+          <span id="banner-verdict" class="verdict"></span>
+          <span id="banner-message" class="message"></span>
+        </div>
+
+        <div id="analysis-body">
+          <h3>Tokens</h3>
+          <div id="tokens" class="tokens"></div>
+
+          <div class="toolbar">
+            <div class="segmented" role="group" aria-label="Modo de exibição">
+              <button id="mode-step" type="button" class="seg" aria-pressed="false">Passo a passo</button>
+              <button id="mode-full" type="button" class="seg" aria-pressed="true">Tabela completa</button>
+            </div>
+            <div id="step-controls" class="step-controls" hidden>
+              <button id="btn-prev" type="button" class="btn">← Anterior</button>
+              <button id="btn-next" type="button" class="btn">Próximo →</button>
+              <button id="btn-play" type="button" class="btn">▶ Reproduzir</button>
+              <span id="step-counter" class="counter mono"></span>
+            </div>
+          </div>
+
+          <div id="step-view" class="step-view" hidden>
+            <div class="state">
+              <h3>Estado atual</h3>
+              <dl>
+                <dt>Pilha <span class="dim">(topo à direita)</span></dt>
+                <dd id="state-stack" class="stack-visual mono"></dd>
+                <dt>Entrada restante</dt>
+                <dd id="state-input" class="stack-visual mono"></dd>
+                <dt>Ação</dt>
+                <dd id="state-action" class="action mono"></dd>
+              </dl>
+            </div>
+            <div class="mini">
+              <h3>Tabela de parsing</h3>
+              <div class="scroll"><div id="parse-table-mini"></div></div>
+            </div>
+          </div>
+
+          <h3>Passos</h3>
+          <div id="steps-scroll" class="scroll steps-scroll">
+            <table id="steps-table" class="data steps">
+              <thead><tr><th scope="col">Passo</th><th scope="col">Pilha <span class="dim">(topo à direita)</span></th><th scope="col">Entrada</th><th scope="col">Ação</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <p>Autor: Guilherme Luiz Cella · Compiladores · URI Erechim</p>
+      <p>
+        <a href="/graph/">Grafo do código</a>
+        ·
+        <a class="github-link" href="https://github.com/guilherme-luiz-cella/analisador-ll1" target="_blank" rel="noopener">
+          <svg class="icon" viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.5 7.5 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+          Código no GitHub
+        </a>
+      </p>
+    </div>
+  </footer>
+
+  <script src="wasm_exec.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
