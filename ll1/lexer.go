@@ -24,13 +24,19 @@ func (e *LexicalError) Detail() string {
 	return fmt.Sprintf("caractere '%c' inválido na posição %d", e.Char, e.Pos)
 }
 
-// operators are the single-character terminals; each is its own kind.
-const operators = "+-*/()"
-
-// Tokenize splits the input into tokens. Identifiers [A-Za-z_][A-Za-z0-9_]*
-// become "id", digit runs become "num", spaces are skipped and any other
-// character is a *LexicalError. On success the last token is always "$".
+// Tokenize splits the input with the lexer of the assignment grammar
+// (Default): see TokenizeFor.
 func Tokenize(input string) ([]Token, error) {
+	return TokenizeFor(Default(), input)
+}
+
+// TokenizeFor splits the input into tokens of grammar g. A word
+// [A-Za-z_][A-Za-z0-9_]* equal to a terminal of g (a keyword such as "and"
+// or "var") becomes that terminal and any other word becomes "id"; digit
+// runs become "num"; a character that is a one-character terminal of g
+// stands for itself; spaces are skipped and anything else is a
+// *LexicalError. On success the last token is always "$".
+func TokenizeFor(g *Grammar, input string) ([]Token, error) {
 	runes := []rune(input)
 	var tokens []Token
 	for i := 0; i < len(runes); {
@@ -44,13 +50,18 @@ func Tokenize(input string) ([]Token, error) {
 			for i < len(runes) && (isLetter(runes[i]) || isDigit(runes[i])) {
 				i++
 			}
-			tokens = append(tokens, Token{Kind: TerminalID, Lexeme: string(runes[start:i]), Pos: start + 1})
+			word := string(runes[start:i])
+			kind := TerminalID
+			if g.isKeyword(word) {
+				kind = word
+			}
+			tokens = append(tokens, Token{Kind: kind, Lexeme: word, Pos: start + 1})
 		case isDigit(r):
 			for i < len(runes) && isDigit(runes[i]) {
 				i++
 			}
 			tokens = append(tokens, Token{Kind: TerminalNum, Lexeme: string(runes[start:i]), Pos: start + 1})
-		case isOperator(r):
+		case g.IsTerminal(string(r)):
 			i++
 			tokens = append(tokens, Token{Kind: string(r), Lexeme: string(r), Pos: start + 1})
 		default:
@@ -59,6 +70,25 @@ func Tokenize(input string) ([]Token, error) {
 	}
 	tokens = append(tokens, Token{Kind: EndMarker, Lexeme: EndMarker, Pos: len(runes) + 1})
 	return tokens, nil
+}
+
+// isKeyword reports whether word is a terminal of g on its own. The names
+// "id" and "num" are not keywords: typed as words they are identifiers.
+func (g *Grammar) isKeyword(word string) bool {
+	return word != TerminalID && word != TerminalNum && g.IsTerminal(word)
+}
+
+// punctuation lists the one-character terminals of g that are not letters,
+// in Terminals order: "+ - * / ( )" for the assignment grammar.
+func (g *Grammar) punctuation() []string {
+	var result []string
+	for _, terminal := range g.Terminals {
+		runes := []rune(terminal)
+		if len(runes) == 1 && !isLetter(runes[0]) && !isDigit(runes[0]) {
+			result = append(result, terminal)
+		}
+	}
+	return result
 }
 
 func isSpace(r rune) bool {
@@ -71,13 +101,4 @@ func isLetter(r rune) bool {
 
 func isDigit(r rune) bool {
 	return r >= '0' && r <= '9'
-}
-
-func isOperator(r rune) bool {
-	for _, op := range operators {
-		if r == op {
-			return true
-		}
-	}
-	return false
 }

@@ -24,16 +24,23 @@ const (
 	ErrorPrefix     = "Erro"
 	MessageAccepted = "Sentença ACEITA: a entrada foi reconhecida pela gramática."
 	messageRejected = "Sentença REJEITADA: %s."
+	// MessageNotLL1 is why Parse refuses a table with conflicts.
+	MessageNotLL1 = "A gramática não é LL(1): a tabela tem conflitos"
 )
 
-// Parse runs the non-recursive predictive parser over input, recording a
-// Step for every action, including the final accept or error.
+// Parse runs the non-recursive predictive parser over input with the
+// lexer of the table's grammar, recording a Step for every action,
+// including the final accept or error. A table with conflicts is refused
+// with a single error step instead of guessing a production.
 func Parse(t *Table, input string) Result {
 	start := []string{EndMarker, t.Grammar.Start}
-	tokens, err := Tokenize(input)
+	if len(t.Conflicts) > 0 {
+		return refuseConflicts(t.Grammar, start, input)
+	}
+	tokens, err := TokenizeFor(t.Grammar, input)
 	if err != nil {
-		// Tokenize only fails with a *LexicalError.
-		return lexicalFailure(start, input, err.(*LexicalError))
+		// TokenizeFor only fails with a *LexicalError.
+		return lexicalFailure(t.Grammar, start, input, err.(*LexicalError))
 	}
 
 	result := Result{Tokens: tokens}
@@ -92,9 +99,9 @@ func reject(result Result, step Step, reason string) Result {
 
 // lexicalFailure builds the single-step trace of a sentence rejected by the
 // lexer: the input column shows the tokens read so far and the bad character.
-func lexicalFailure(start []string, input string, lexErr *LexicalError) Result {
+func lexicalFailure(g *Grammar, start []string, input string, lexErr *LexicalError) Result {
 	prefix := string([]rune(input)[:lexErr.Pos-1])
-	read, _ := Tokenize(prefix)
+	read, _ := TokenizeFor(g, prefix)
 	read = read[:len(read)-1] // drop the "$" of the prefix
 	remaining := append(kinds(read), string(lexErr.Char), EndMarker)
 	step := Step{
@@ -108,6 +115,19 @@ func lexicalFailure(start []string, input string, lexErr *LexicalError) Result {
 		Tokens:  read,
 		Steps:   []Step{step},
 	}
+}
+
+// refuseConflicts builds the single-step trace of a sentence that is not
+// analyzed because the grammar is not LL(1). The input column shows the
+// tokens when the sentence has no lexical error.
+func refuseConflicts(g *Grammar, start []string, input string) Result {
+	tokens, err := TokenizeFor(g, input)
+	remaining := []string{EndMarker}
+	if err == nil {
+		remaining = kinds(tokens)
+	}
+	step := Step{Number: 1, Stack: start, Input: remaining, Action: ErrorPrefix + ": " + MessageNotLL1}
+	return Result{Message: MessageNotLL1 + ".", Tokens: tokens, Steps: []Step{step}}
 }
 
 func kinds(tokens []Token) []string {

@@ -8,6 +8,17 @@ type Table struct {
 	Columns   []string                  // Terminals + "$"
 	Cells     map[string]map[string]int // non-terminal -> column -> production Number (missing = error)
 	Conflicts []string                  // empty for an LL(1) grammar
+
+	// ConflictCells lists each cell claimed by more than one production,
+	// in the order the conflicts were found.
+	ConflictCells []ConflictCell
+}
+
+// ConflictCell is a table cell that more than one production claims.
+type ConflictCell struct {
+	NonTerminal string
+	Column      string
+	Numbers     []int // every production claiming the cell; the first keeps it
 }
 
 // BuildTable fills the table from FIRST and FOLLOW: production A -> α goes
@@ -41,9 +52,24 @@ func (t *Table) place(p Production, column string) {
 	if existing, taken := row[column]; taken {
 		t.Conflicts = append(t.Conflicts, fmt.Sprintf(
 			"Conflito em M[%s, %s]: produções %d e %d", p.Head, column, existing, p.Number))
+		t.recordConflict(p, column, existing)
 		return
 	}
 	row[column] = p.Number
+}
+
+func (t *Table) recordConflict(p Production, column string, existing int) {
+	for i, cell := range t.ConflictCells {
+		if cell.NonTerminal == p.Head && cell.Column == column {
+			t.ConflictCells[i].Numbers = append(cell.Numbers, p.Number)
+			return
+		}
+	}
+	t.ConflictCells = append(t.ConflictCells, ConflictCell{
+		NonTerminal: p.Head,
+		Column:      column,
+		Numbers:     []int{existing, p.Number},
+	})
 }
 
 // Production returns the production in M[nonTerminal, column], if any.

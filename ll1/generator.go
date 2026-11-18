@@ -16,7 +16,8 @@ const maxNumberLexeme = 99
 // invalidBaseDepth is the depth of the valid sentence GenerateInvalid mutates.
 const invalidBaseDepth = 4
 
-// illegalCharacters are inserted to cause lexical errors.
+// illegalCharacters are inserted to cause lexical errors; those that are
+// terminals of the grammar at hand are skipped.
 var illegalCharacters = []string{"#", "@", "!", "?", "&", "%", ";"}
 
 // Generate builds a random valid sentence by a leftmost derivation from the
@@ -51,15 +52,18 @@ func GenerateInvalid(g *Grammar, rng *rand.Rand) string {
 	table := BuildTable(g)
 	for {
 		lexemes := strings.Fields(Generate(g, rng, invalidBaseDepth))
-		candidate := strings.Join(mutate(lexemes, rng), " ")
+		candidate := strings.Join(mutate(g, lexemes, rng), " ")
 		if !Parse(table, candidate).Accepted {
 			return candidate
 		}
 	}
 }
 
-// mutate applies one random kind of damage to a copy of the lexemes.
-func mutate(lexemes []string, rng *rand.Rand) []string {
+// mutate applies one random kind of damage to a copy of the lexemes. The
+// "operators" are the grammar's one-character terminals. A mutation that
+// cannot apply returns the lexemes unchanged, and GenerateInvalid retries.
+func mutate(g *Grammar, lexemes []string, rng *rand.Rand) []string {
+	operators := g.punctuation()
 	const (
 		dropToken = iota
 		duplicateOperator
@@ -69,12 +73,15 @@ func mutate(lexemes []string, rng *rand.Rand) []string {
 	)
 	switch rng.Intn(mutationCount) {
 	case dropToken:
+		if len(lexemes) == 0 {
+			return lexemes
+		}
 		i := rng.Intn(len(lexemes))
 		return append(append([]string{}, lexemes[:i]...), lexemes[i+1:]...)
 	case duplicateOperator:
 		var operatorIndexes []int
 		for i, lexeme := range lexemes {
-			if strings.Contains(operators, lexeme) {
+			if contains(operators, lexeme) {
 				operatorIndexes = append(operatorIndexes, i)
 			}
 		}
@@ -82,12 +89,24 @@ func mutate(lexemes []string, rng *rand.Rand) []string {
 			i := operatorIndexes[rng.Intn(len(operatorIndexes))]
 			return insertAt(lexemes, i, lexemes[i])
 		}
-		return insertAt(lexemes, rng.Intn(len(lexemes)+1), "+")
+		if len(operators) == 0 {
+			return lexemes
+		}
+		return insertAt(lexemes, rng.Intn(len(lexemes)+1), operators[0])
 	case unbalancedParenthesis:
 		parenthesis := []string{"(", ")"}[rng.Intn(2)]
 		return insertAt(lexemes, rng.Intn(len(lexemes)+1), parenthesis)
 	default:
-		char := illegalCharacters[rng.Intn(len(illegalCharacters))]
+		var illegal []string
+		for _, char := range illegalCharacters {
+			if !g.IsTerminal(char) {
+				illegal = append(illegal, char)
+			}
+		}
+		if len(illegal) == 0 {
+			return lexemes
+		}
+		char := illegal[rng.Intn(len(illegal))]
 		return insertAt(lexemes, rng.Intn(len(lexemes)+1), char)
 	}
 }
