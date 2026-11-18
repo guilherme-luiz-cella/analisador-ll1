@@ -7,7 +7,7 @@ step: 2
 
 # tableJSON
 
-The whole parsing table for the page: `columns`, `rows` and the list of `conflicts` (empty for this grammar).
+The whole parsing table for the page: `columns`, `rows` and the list of `conflicts` (empty for an LL(1) grammar).
 
 ## Connections
 - Holds [[tableRowJSON]]: one per non-terminal.

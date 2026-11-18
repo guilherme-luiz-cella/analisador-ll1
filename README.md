@@ -150,6 +150,15 @@ Células vazias indicam erro. Não há conflitos, portanto a gramática é LL(1)
 - `+ - * / ( )` são os próprios terminais; espaços são ignorados.
 - Qualquer outro caractere é erro léxico, e a sentença é rejeitada com a posição do caractere.
 
+## Outras gramáticas
+
+A gramática do trabalho é a das expressões, e ela é a seleção padrão. Para demonstração, o programa traz mais 19 gramáticas fixas, escolhidas no menu "Gramática" do site (o endereço guarda a escolha, por exemplo `#g=json`) ou na opção 7 do terminal. O usuário não digita gramáticas.
+
+- Exemplos próprios: expressões booleanas, declarações de variáveis, listas aninhadas e um exemplo NÃO LL(1) (`E -> E + T | T`). Neste último a tabela mostra o conflito em `M[E, id]` e o analisador se recusa a analisar.
+- Da literatura e da web, com autor e fonte na tela: JSON (RFC 4627), S-expressões (McCarthy), PL/0 (Wirth), programas em linha reta (Appel), TINY (Louden), expressões regulares (Might), Dyck, XML (W3C), CSV (RFC 4180), lógica proposicional (IEP), cálculo lambda (SEP), tabelas Lua (manual do Lua 5.4), notação de Wirth (EBNF), Brainf*ck e declarações Pascal (ISO 7185). Quase todas foram adaptadas para LL(1) (fatoração, remoção de recursão à esquerda, repetições viradas listas com ε); o processo e os conjuntos calculados à mão estão em `steps/06-presets-research.md`.
+
+O analisador léxico segue a gramática escolhida: palavras iguais a um terminal (`and`, `var`, `if`) viram esse terminal, outras palavras viram `id`, dígitos viram `num`, e cada terminal de um caractere vale por si. Não há tokens de dois caracteres (`:=` virou `=`, `..` virou `. .`), e `|` não é terminal porque separa alternativas na notação.
+
 ## Como executar
 
 No Windows, dê dois cliques em `executar.bat` (ele ativa UTF-8 no console para mostrar o ε e chama `analisador.exe`).
@@ -169,6 +178,7 @@ Menu:
 4  Digitar sentença
 5  Gerar sentença válida
 6  Gerar sentença inválida
+7  Trocar gramática
 0  Sair
 ```
 

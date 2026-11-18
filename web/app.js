@@ -8,15 +8,22 @@ const END_MARKER = '$';
 const EPSILON = 'ε';
 // Parsed to build the leftmost derivation of "id + num * id" shown in the grammar section.
 const DERIVATION_SAMPLE = 'x + 1 * y';
+// The selected grammar lives in the URL hash as "#g=<preset id>".
+const HASH_PREFIX = '#g=';
 
 const TEXT = Object.freeze({
   accepted: 'ACEITA',
   rejected: 'REJEITADA',
+  refused: 'NÃO ANALISADA',
   play: '▶ Reproduzir',
   pause: '⏸ Pausar',
   noTokens: 'Nenhum token reconhecido.',
   noConflicts: 'Gramática LL(1): nenhuma célula da tabela tem conflito. Células vazias indicam erro sintático.',
-  conflicts: 'Conflitos encontrados: ',
+  conflicts: 'A gramática não é LL(1): as células destacadas recebem mais de uma produção, e um único token não basta para escolher. Por isso o analisador se recusa a analisar em vez de adivinhar. ',
+  source: 'Fonte: ',
+  adapted: 'adaptado para LL(1)',
+  examplePrefix: 'ex.: ',
+  terminalsNote: (terminals) => `Até 200 caracteres. Terminais desta gramática: ${terminals.join(' ')}`,
   loadFailed: 'Não foi possível carregar o analisador. Recarregue a página.',
   stepOf: (current, total) => `Passo ${current} de ${total}`,
   ruleOk: 'satisfeita',
@@ -28,6 +35,10 @@ const TEXT = Object.freeze({
 const $ = (id) => document.getElementById(id);
 
 const app = {
+  presets: [],
+  preset: null,
+  // Texts of the page as written for the assignment grammar, restored when it is selected again.
+  defaults: null,
   grammar: null,
   nonTerminals: new Set(),
   table: null,
@@ -110,6 +121,7 @@ function renderGrouped() {
 
 function renderGrammar() {
   const list = $('productions');
+  for (const id of ['productions', 'grouped', 'def-nonterminals', 'def-terminals', 'def-start']) $(id).replaceChildren();
   for (const production of app.grammar.productions) {
     const item = el('li');
     item.append(el('span', 'prod-number', String(production.number)), productionNode(production.head, production.body));
@@ -209,6 +221,7 @@ function ruleCheck(head, first, follow) {
 }
 
 function renderChecks(rows) {
+  $('ll1-checks').replaceChildren();
   const first = new Map(rows.map((row) => [row.nonTerminal, row.first]));
   const follow = new Map(rows.map((row) => [row.nonTerminal, row.follow]));
   for (const head of app.grammar.nonTerminals) $('ll1-checks').append(ruleCheck(head, first, follow));
@@ -240,9 +253,10 @@ function derivationLine(form, sign, number) {
 // A predictive parser always expands the leftmost non-terminal, so the
 // productions it applies, in order, are exactly the leftmost derivation.
 function renderDerivation() {
-  const result = JSON.parse(globalThis.ll1.parse(DERIVATION_SAMPLE));
+  const result = JSON.parse(globalThis.ll1.parse(DERIVATION_SAMPLE, app.preset.id));
   const applied = (result.steps || []).filter((step) => step.cell).map((step) => productionAt(step.cell));
   const list = $('derivation');
+  list.replaceChildren();
   let form = [app.grammar.start];
   list.append(derivationLine(form, '', 0));
   for (const production of applied) {
@@ -255,6 +269,7 @@ function renderDerivation() {
 
 function renderSets(rows) {
   const body = $('sets-table').tBodies[0];
+  body.replaceChildren();
   for (const row of rows) {
     const tr = el('tr');
     const head = el('th');
@@ -294,7 +309,16 @@ function buildParseTable(table, compact) {
       const td = el('td', cell.number ? 'filled' : 'empty');
       td.dataset.nonTerminal = row.nonTerminal;
       td.dataset.column = cell.column;
-      if (cell.number) {
+      if (cell.conflicts) {
+        // Every production that claims the cell, so the clash is visible.
+        td.classList.add('conflict');
+        for (const number of cell.conflicts) {
+          const production = app.grammar.productions.find((p) => p.number === number);
+          const line = el('span', 'conflict-line');
+          line.append(el('span', 'cell-number', String(number)), productionNode(production.head, production.body));
+          td.append(line);
+        }
+      } else if (cell.number) {
         const production = app.grammar.productions.find((p) => p.number === cell.number);
         td.append(el('span', 'cell-number', String(cell.number)), productionNode(production.head, production.body));
       } else {
@@ -308,8 +332,8 @@ function buildParseTable(table, compact) {
 }
 
 function renderTables(table) {
-  $('parse-table').append(buildParseTable(table, false));
-  $('parse-table-mini').append(buildParseTable(table, true));
+  $('parse-table').replaceChildren(buildParseTable(table, false));
+  $('parse-table-mini').replaceChildren(buildParseTable(table, true));
   $('table-note').textContent = table.conflicts.length ? TEXT.conflicts + table.conflicts.join('; ') : TEXT.noConflicts;
   $('table-note').classList.toggle('conflicts', table.conflicts.length > 0);
 }
@@ -473,7 +497,9 @@ function showResult(result) {
   // Reading offsetWidth restarts the entry animation for every new result.
   void banner.offsetWidth;
   banner.classList.add('shown');
-  $('banner-verdict').textContent = (result.accepted ? '✔ ' : '✘ ') + (result.accepted ? TEXT.accepted : TEXT.rejected);
+  // A grammar with conflicts is never run, so its sentences are not "rejected".
+  const verdict = result.accepted ? TEXT.accepted : (app.preset.isLL1 ? TEXT.rejected : TEXT.refused);
+  $('banner-verdict').textContent = (result.accepted ? '✔ ' : '✘ ') + verdict;
   $('banner-message').textContent = result.message;
   $('result').hidden = false;
   renderAnalysis();
@@ -482,7 +508,7 @@ function showResult(result) {
 function analyze() {
   stopPlaying();
   const input = $('sentence').value;
-  const result = JSON.parse(globalThis.ll1.parse(input));
+  const result = JSON.parse(globalThis.ll1.parse(input, app.preset.id));
   result.tokens = result.tokens || [];
   result.steps = result.steps || [];
   showResult(result);
@@ -534,6 +560,103 @@ function togglePlay() {
   }, PLAY_INTERVAL_MS);
 }
 
+// ---------- Grammar choice ----------
+
+function presetFromHash() {
+  const hash = location.hash;
+  if (!hash.startsWith(HASH_PREFIX)) return null;
+  const id = decodeURIComponent(hash.slice(HASH_PREFIX.length));
+  return app.presets.find((preset) => preset.id === id) || null;
+}
+
+function defaultPreset() {
+  return app.presets.find((preset) => preset.isDefault);
+}
+
+function renderPresetOptions() {
+  const select = $('preset');
+  const groups = new Map();
+  for (const preset of app.presets) {
+    if (!groups.has(preset.group)) {
+      const group = el('optgroup');
+      group.label = preset.group;
+      groups.set(preset.group, group);
+      select.append(group);
+    }
+    const option = el('option', null, preset.name);
+    option.value = preset.id;
+    groups.get(preset.group).append(option);
+  }
+}
+
+// "Fonte: <autor>, <título>" linked to the source, plus the adaptation note.
+function fillSource(node, preset) {
+  node.replaceChildren();
+  node.hidden = !preset.author;
+  if (!preset.author) return;
+  const link = el('a', null, `${preset.author}, ${preset.source}`);
+  link.href = preset.url;
+  link.target = '_blank';
+  link.rel = 'noopener';
+  node.append(TEXT.source, link);
+  if (preset.adapted) node.append(' · ', el('span', 'adapted', TEXT.adapted));
+}
+
+function exampleButton(sentence) {
+  const button = el('button', 'example mono', sentence);
+  button.type = 'button';
+  button.addEventListener('click', () => setSentence(sentence));
+  return button;
+}
+
+function renderPresetTexts() {
+  const preset = app.preset;
+  const isDefault = preset.isDefault;
+  for (const node of document.querySelectorAll('[data-assignment]')) node.hidden = !isDefault;
+  $('preset-about').hidden = isDefault;
+  $('preset-name').textContent = preset.name;
+  $('preset-description').textContent = preset.description;
+  fillSource($('preset-source'), preset);
+  fillSource($('preset-about-source'), preset);
+  $('grouped-caption').textContent = isDefault ? app.defaults.caption : preset.name;
+  $('sentence').placeholder = isDefault ? app.defaults.placeholder : TEXT.examplePrefix + preset.examples[0];
+  $('sentence-note').textContent = isDefault ? app.defaults.note : TEXT.terminalsNote(preset.terminals);
+  const examples = $('examples');
+  examples.replaceChildren(app.defaults.examplesLabel);
+  for (const sentence of [...preset.examples, ...preset.invalidExamples]) examples.append(' ', exampleButton(sentence));
+}
+
+// Loads one preset: grammar, sets, LL(1) checks, table and examples; the
+// previous analysis is cleared.
+function selectPreset(preset) {
+  const api = globalThis.ll1;
+  app.preset = preset;
+  $('preset').value = preset.id;
+  app.grammar = JSON.parse(api.grammar(preset.id));
+  app.nonTerminals = new Set(app.grammar.nonTerminals);
+  app.table = JSON.parse(api.table(preset.id));
+  const sets = JSON.parse(api.sets(preset.id));
+  renderGrammar();
+  renderSets(sets);
+  renderChecks(sets);
+  renderTables(app.table);
+  if (preset.isDefault) renderDerivation();
+  renderPresetTexts();
+  reset();
+}
+
+function onPresetChange() {
+  const preset = app.presets.find((candidate) => candidate.id === $('preset').value) || defaultPreset();
+  const url = preset.isDefault ? location.pathname + location.search : HASH_PREFIX + encodeURIComponent(preset.id);
+  history.replaceState(null, '', url);
+  selectPreset(preset);
+}
+
+function onHashChange() {
+  const preset = presetFromHash();
+  if (preset && preset !== app.preset) selectPreset(preset);
+}
+
 // ---------- Wiring ----------
 
 function setSentence(text) {
@@ -546,12 +669,11 @@ function wireEvents() {
     event.preventDefault();
     analyze();
   });
-  $('btn-valid').addEventListener('click', () => setSentence(globalThis.ll1.generate()));
-  $('btn-invalid').addEventListener('click', () => setSentence(globalThis.ll1.generateInvalid()));
+  $('btn-valid').addEventListener('click', () => setSentence(globalThis.ll1.generate(app.preset.id)));
+  $('btn-invalid').addEventListener('click', () => setSentence(globalThis.ll1.generateInvalid(app.preset.id)));
   $('btn-clear').addEventListener('click', reset);
-  for (const button of document.querySelectorAll('[data-example]')) {
-    button.addEventListener('click', () => setSentence(button.dataset.example));
-  }
+  $('preset').addEventListener('change', onPresetChange);
+  window.addEventListener('hashchange', onHashChange);
   $('mode-step').addEventListener('click', () => setMode(MODE.STEP));
   $('mode-full').addEventListener('click', () => setMode(MODE.FULL));
   $('btn-prev').addEventListener('click', () => { stopPlaying(); goToStep(app.current - 1); });
@@ -560,7 +682,7 @@ function wireEvents() {
 }
 
 function enableControls() {
-  for (const id of ['sentence', 'btn-analyze', 'btn-valid', 'btn-invalid', 'btn-clear']) $(id).disabled = false;
+  for (const id of ['preset', 'sentence', 'btn-analyze', 'btn-valid', 'btn-invalid', 'btn-clear']) $(id).disabled = false;
 }
 
 function failLoading() {
@@ -593,16 +715,15 @@ async function loadWasm() {
 async function start() {
   try {
     await loadWasm();
-    const api = globalThis.ll1;
-    app.grammar = JSON.parse(api.grammar());
-    app.nonTerminals = new Set(app.grammar.nonTerminals);
-    app.table = JSON.parse(api.table());
-    const sets = JSON.parse(api.sets());
-    renderGrammar();
-    renderSets(sets);
-    renderChecks(sets);
-    renderTables(app.table);
-    renderDerivation();
+    app.presets = JSON.parse(globalThis.ll1.presets());
+    app.defaults = {
+      caption: $('grouped-caption').textContent,
+      placeholder: $('sentence').placeholder,
+      note: $('sentence-note').textContent,
+      examplesLabel: $('examples').textContent.trim(),
+    };
+    renderPresetOptions();
+    selectPreset(presetFromHash() || defaultPreset());
     wireEvents();
     enableControls();
     $('loading').classList.add('done');

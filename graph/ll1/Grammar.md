@@ -7,10 +7,10 @@ step: 1
 
 # Grammar
 
-The fixed expression grammar: start symbol, non-terminals, terminals and the productions in display order. FIRST and FOLLOW live in `ll1/sets.go`; the constants `Epsilon` (`ε`), `EndMarker` (`$`), `TerminalID` and `TerminalNum` are defined here.
+A context-free grammar (the assignment grammar or one of the [[Preset]] grammars): start symbol, non-terminals, terminals and the productions in display order. FIRST and FOLLOW live in `ll1/sets.go`; the constants `Epsilon` (`ε`), `EndMarker` (`$`), `TerminalID` and `TerminalNum` are defined here.
 
 ## Public functions
-- `Default() *Grammar`: the assignment grammar, productions 1..11.
+- `Default() *Grammar`: the assignment grammar, productions 1..11. It is also the first preset.
 - `IsTerminal(s) bool`, `IsNonTerminal(s) bool`: symbol membership.
 - `ProductionsOf(nonTerminal) []Production`: alternatives of one non-terminal, in order.
 - `String() string`: one line per non-terminal, alternatives joined by ` | `.

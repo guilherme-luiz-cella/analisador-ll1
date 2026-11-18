@@ -10,10 +10,11 @@ step: 1
 The LL(1) parsing table `M[non-terminal, terminal]` holding production numbers. `Columns` are the terminals plus `$`; `Conflicts` is empty for an LL(1) grammar.
 
 ## Public functions
-- `BuildTable(g *Grammar) *Table`: puts `A -> α` in `M[A, a]` for each `a` in FIRST(α) and, when ε is in FIRST(α), in `M[A, b]` for each `b` in FOLLOW(A). A cell claimed twice is recorded in `Conflicts` (Portuguese text); the first production keeps it.
+- `BuildTable(g *Grammar) *Table`: puts `A -> α` in `M[A, a]` for each `a` in FIRST(α) and, when ε is in FIRST(α), in `M[A, b]` for each `b` in FOLLOW(A). A cell claimed twice is recorded in `Conflicts` (Portuguese text) and in `ConflictCells`; the first production keeps it.
 - `Production(nonTerminal, column) (Production, bool)`: the production in a cell; false for an error cell.
 
 ## Connections
 - Reads [[Grammar]]: the productions and symbol order.
 - Uses [[Sets]]: FIRST and FOLLOW decide which cells are filled.
 - Returns [[Production]]: from a cell lookup.
+- Records [[ConflictCell]]: one per cell with more than one production.

@@ -31,7 +31,12 @@
         </dl>
       </div>
       <figure class="hero-grammar">
-        <figcaption>Gramática das expressões</figcaption>
+        <div class="picker">
+          <label for="preset">Gramática</label>
+          <select id="preset" disabled></select>
+          <p id="preset-source" class="source" hidden></p>
+        </div>
+        <figcaption id="grouped-caption">Gramática das expressões</figcaption>
         <pre id="grouped" class="mono"></pre>
         <a class="btn primary" href="#analise">Analisar uma sentença</a>
       </figure>
@@ -56,7 +61,7 @@
     <section id="gramatica" class="card section" aria-labelledby="h-gramatica">
       <p class="kicker">Etapa 1</p>
       <h2 id="h-gramatica">A gramática</h2>
-      <p class="lead">A linguagem reconhecida é a das expressões aritméticas com identificadores, números inteiros, os operadores <span class="term mono">+ - * /</span> e parênteses.</p>
+      <p class="lead" data-assignment>A linguagem reconhecida é a das expressões aritméticas com identificadores, números inteiros, os operadores <span class="term mono">+ - * /</span> e parênteses.</p>
 
       <div class="columns">
         <div>
@@ -74,8 +79,16 @@
           <ol id="productions" class="productions mono"></ol>
         </div>
 
-        <div>
-          <h3>Por que é LL(1)</h3>
+        <div id="preset-about" hidden>
+          <h3>Sobre esta gramática</h3>
+          <p id="preset-name" class="about-name"></p>
+          <p id="preset-description"></p>
+          <p id="preset-about-source" class="source"></p>
+          <p class="hint">A explicação escrita (por que é LL(1), requisitos do trabalho e derivação) é da gramática do trabalho. Escolha "Expressões aritméticas" para vê-la.</p>
+        </div>
+
+        <div data-assignment>
+          <h3>Por que é LL(1) <span class="badge">gramática do trabalho</span></h3>
 
           <h4>Fatorada</h4>
           <p>Nenhum par de alternativas do mesmo não terminal começa pelo mesmo símbolo: <span class="nt mono">E'</span> escolhe por <span class="term mono">+</span> ou <span class="term mono">-</span>, <span class="nt mono">T'</span> por <span class="term mono">*</span> ou <span class="term mono">/</span>, <span class="nt mono">F</span> por <span class="term mono">(</span>, <span class="term mono">id</span> ou <span class="term mono">num</span>. Olhar um único token basta para decidir.</p>
@@ -100,7 +113,7 @@ T' → * F T' | / F T' | ε</pre>
       <p class="hint">Para cada <span class="mono">A → α | β</span>: <span class="mono">FIRST(α) ∩ FIRST(β) = ∅</span>. Quando uma alternativa deriva <span class="eps mono">ε</span>: <span class="mono">FIRST(outras alternativas) ∩ FOLLOW(A) = ∅</span>. Calculado pelo programa com os conjuntos da etapa 2.</p>
       <div id="ll1-checks" class="checks"></div>
 
-      <div class="columns">
+      <div class="columns" data-assignment>
         <div>
           <h3>Requisitos mínimos do trabalho</h3>
           <ul class="reqs">
@@ -153,12 +166,7 @@ T' → * F T' | / F T' | ε</pre>
           <button id="btn-invalid" type="button" class="btn" disabled>Gerar inválida</button>
           <button id="btn-clear" type="button" class="btn ghost" disabled>Limpar</button>
         </div>
-        <p class="examples">Exemplos:
-          <button type="button" class="example mono" data-example="a+b*c">a+b*c</button>
-          <button type="button" class="example mono" data-example="(x+1)*y">(x+1)*y</button>
-          <button type="button" class="example mono" data-example="a+">a+</button>
-          <button type="button" class="example mono" data-example="2 $ 3">2 $ 3</button>
-        </p>
+        <p id="examples" class="examples">Exemplos:</p>
       </form>
 
       <div id="result" hidden>
