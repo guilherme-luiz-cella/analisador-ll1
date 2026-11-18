@@ -36,12 +36,14 @@ var menu = []menuOption{
 	{"4", "Digitar sentença", (*app).typeSentence},
 	{"5", "Gerar sentença válida", (*app).generateValid},
 	{"6", "Gerar sentença inválida", (*app).generateInvalid},
+	{"7", "Trocar gramática", (*app).choosePreset},
 }
 
 const exitKey = "0"
 
 // app holds the parser state and the terminal streams of one session.
 type app struct {
+	preset  ll1.Preset
 	grammar *ll1.Grammar
 	table   *ll1.Table
 	rng     *rand.Rand
@@ -60,15 +62,14 @@ func main() {
 
 // run shows the menu until the user picks 0 or the input ends.
 func run(in io.Reader, out io.Writer, colors bool, rng *rand.Rand) {
-	grammar := ll1.Default()
 	a := &app{
-		grammar: grammar,
-		table:   ll1.BuildTable(grammar),
-		rng:     rng,
-		in:      bufio.NewScanner(in),
-		out:     out,
-		colors:  palette{enabled: colors},
+		rng:    rng,
+		in:     bufio.NewScanner(in),
+		out:    out,
+		colors: palette{enabled: colors},
 	}
+	preset, _ := ll1.PresetByID(ll1.DefaultPresetID)
+	a.use(preset)
 	a.print(box(a.colors,
 		"ANALISADOR SINTÁTICO LL(1)",
 		"Preditivo tabular (não recursivo)"))
@@ -101,8 +102,15 @@ func findOption(key string) (menuOption, bool) {
 	return menuOption{}, false
 }
 
+// use makes preset the current grammar.
+func (a *app) use(preset ll1.Preset) {
+	a.preset = preset
+	a.grammar = preset.Grammar
+	a.table = ll1.BuildTable(preset.Grammar)
+}
+
 func (a *app) printMenu() {
-	a.print("\n" + a.colors.paint(styleTitle, "MENU") + "\n")
+	a.print("\n" + a.colors.paint(styleTitle, "MENU") + "  " + a.colors.paint(styleDim, "Gramática: "+a.preset.Name) + "\n")
 	for _, option := range menu {
 		a.print(fmt.Sprintf("  %s  %s\n", a.colors.paint(styleBold, option.key), option.label))
 	}
@@ -111,7 +119,11 @@ func (a *app) printMenu() {
 
 func (a *app) showGrammar() bool {
 	a.section("GRAMÁTICA")
-	a.print(a.grammar.String())
+	a.print(a.colors.paint(styleBold, a.preset.Name) + "\n" + a.preset.Description + "\n")
+	if a.preset.Author != "" {
+		a.print(sourceText(a.preset) + "\n")
+	}
+	a.print("\n" + a.grammar.String())
 	a.print(fmt.Sprintf("\nSímbolo inicial: %s\n", a.grammar.Start))
 	a.print(fmt.Sprintf("Não terminais:   %s\n", strings.Join(a.grammar.NonTerminals, " ")))
 	a.print(fmt.Sprintf("Terminais:       %s (fim da entrada: %s)\n\n", strings.Join(a.grammar.Terminals, " "), ll1.EndMarker))
@@ -177,6 +189,53 @@ func (a *app) generateInvalid() bool {
 	a.section("GERAR SENTENÇA INVÁLIDA")
 	a.analyze(ll1.GenerateInvalid(a.grammar, a.rng))
 	return true
+}
+
+// choosePreset lists the preset grammars by group, with author and source,
+// and switches to the one picked by number.
+func (a *app) choosePreset() bool {
+	a.section("TROCAR GRAMÁTICA")
+	presets := ll1.Presets()
+	for i, preset := range presets {
+		if i == 0 || preset.Group != presets[i-1].Group {
+			a.print("\n" + a.colors.paint(styleTitle, preset.Group.Label()) + "\n")
+		}
+		marker := " "
+		if preset.ID == a.preset.ID {
+			marker = "*"
+		}
+		a.print(fmt.Sprintf(" %s%3d  %s\n", marker, i+1, preset.Name))
+		if preset.Author != "" {
+			a.print(a.colors.paint(styleDim, "        "+sourceText(preset)) + "\n")
+			a.print(a.colors.paint(styleDim, "        "+preset.URL) + "\n")
+		}
+	}
+	choice, ok := a.readLine(fmt.Sprintf("\nNúmero da gramática (1 a %d, Enter mantém a atual): ", len(presets)))
+	if !ok {
+		return false
+	}
+	choice = strings.TrimSpace(choice)
+	if choice == "" {
+		a.print("Gramática mantida: " + a.preset.Name + "\n")
+		return true
+	}
+	number, err := strconv.Atoi(choice)
+	if err != nil || number < 1 || number > len(presets) {
+		a.print(a.colors.paint(styleBad, "Opção inválida.") + " Gramática mantida: " + a.preset.Name + "\n")
+		return true
+	}
+	a.use(presets[number-1])
+	a.print(a.colors.paint(styleGood, "Gramática atual: "+a.preset.Name) + "\n")
+	return true
+}
+
+// sourceText reads "Fonte: autor, título", plus the LL(1) adaptation note.
+func sourceText(preset ll1.Preset) string {
+	text := "Fonte: " + preset.Author + ", " + preset.Source
+	if preset.Adapted {
+		text += " (adaptado para LL(1))"
+	}
+	return text
 }
 
 // analyze parses the sentence and prints its tokens, trace and result.

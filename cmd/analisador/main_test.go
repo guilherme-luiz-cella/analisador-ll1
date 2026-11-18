@@ -40,6 +40,41 @@ func TestEveryMenuOptionRunsAndReturnsToTheMenu(t *testing.T) {
 	}
 }
 
+func TestOptionSevenSwitchesGrammarAndShowsTheSource(t *testing.T) {
+	out := runWith("7\n6\n\n4\n{ a : 1 }\n\n1\n\n0\n")
+	for _, want := range []string{
+		"Trabalho", "Exemplos", "Da literatura e da web", "Brainf*ck",
+		"Fonte: Douglas Crockford, RFC 4627", "(adaptado para LL(1))", "https://www.rfc-editor.org/rfc/rfc4627",
+		"Gramática atual: JSON", "Gramática: JSON", "Casa ':'", "ACEITA", "Members' -> , Member Members' | ε",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q", want)
+		}
+	}
+}
+
+func TestTheMenuHeaderNamesTheAssignmentGrammarByDefault(t *testing.T) {
+	out := runWith("7\n\n\n7\n99\n\n0\n")
+	if !strings.Contains(out, "Gramática: Expressões aritméticas (gramática do trabalho)") {
+		t.Errorf("header lacks the default grammar name")
+	}
+	if !strings.Contains(out, "Opção inválida. Gramática mantida") {
+		t.Errorf("an out-of-range number must keep the grammar")
+	}
+}
+
+func TestTheNonLL1GrammarShowsConflictsAndRefusesToParse(t *testing.T) {
+	out := runWith("7\n5\n\n3\n\n4\na + b\n\n5\n\n0\n")
+	for _, want := range []string{"Conflito em M[E, id]: produções 1 e 2", "A gramática não é LL(1): a tabela tem conflitos"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q", want)
+		}
+	}
+	if strings.Contains(out, "ACEITA") {
+		t.Error("a grammar with conflicts must not accept")
+	}
+}
+
 func TestEndOfInputExitsCleanly(t *testing.T) {
 	if out := runWith("4\n"); !strings.HasSuffix(out, "Até logo!\n") {
 		t.Errorf("output ends with %q", out[len(out)-20:])
