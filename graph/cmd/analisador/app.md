@@ -23,4 +23,4 @@ The terminal program: pt-BR menu (1 Gramática, 2 FIRST e FOLLOW, 3 Tabela, 4 Di
 - Calls [[Generator]]: options 5 and 6 create the sentence.
 
 ## Notes
-Frames and tables are drawn by `render.go`. Colors are ANSI, used only when `NO_COLOR` is unset and the console accepts them; piped output is plain.
+Frames and tables are drawn by `render.go`. Generated sentences use `ll1.DefaultMaxDepth`, the same depth as the web. Colors are ANSI, used only when `NO_COLOR` is unset and the console accepts them; piped output is plain.

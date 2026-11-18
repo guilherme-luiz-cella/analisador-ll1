@@ -19,4 +19,4 @@ Command that feeds the `/graph` page, using only the standard library. Without f
 - Runs [[builder]]: one pass to declare nodes, one to link calls.
 
 ## Notes
-`build-site.ps1` runs both modes while building `site/`.
+`build-site.ps1` runs both modes while building `site/`. Long signatures are cut at 200 runes, not bytes, so `ε` or `→` is never split.

@@ -20,4 +20,4 @@ The `/graph` page: a force-directed graph in the style of Obsidian's graph view,
 - Renders bodies with [[MiniMarkdown]]: headings, lists, code and clickable wikilinks.
 
 ## Notes
-Node size follows the link count; labels fade in with the zoom (hubs first); hovering a node dims everything but its neighbors. Dark by default, light with `prefers-color-scheme: light`.
+Node size follows the link count; labels fade in with the zoom (hubs first); hovering a node dims everything but its neighbors. Dark by default, light with `prefers-color-scheme: light`; the CSS colors are read once and cached until the color scheme changes. The URL hash names the open node (`#notas/<nota>` or `#codigo/<id>`); a malformed hash just opens the notes view.

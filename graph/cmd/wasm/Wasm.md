@@ -25,4 +25,4 @@ The optional `id` picks a preset; a missing or unknown id means the assignment g
 - Builds [[grammarJSON]], [[setsRowJSON]], [[tableJSON]] and [[resultJSON]]: the shapes the page receives.
 
 ## Notes
-The JSON types below mirror the Go types so that the page never sees Go structs. Errors in encoding come back as `{"error": ...}`.
+The JSON types mirror the Go types so that the page never sees Go structs. Encoding cannot fail for these plain types, so an error panics instead of returning half-built JSON.

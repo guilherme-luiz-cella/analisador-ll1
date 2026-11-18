@@ -18,4 +18,4 @@ A fixed example grammar the user can pick (20 in all): id, pt-BR name and descri
 - Grouped by [[PresetGroup]]: Trabalho, Exemplos or Da literatura e da web.
 
 ## Notes
-`grammarFrom` takes the heads as non-terminals (the first is the start symbol) and every other symbol as a terminal, in order of first appearance; `|` only separates alternatives, so it can never be a terminal. The FIRST and FOLLOW of every preset are checked in `presets_test.go` against the hand-computed tables of `steps/06-presets-research.md`. Only `nao-ll1` has a conflict (`M[E, id]`).
+`grammarFrom` takes the heads as non-terminals (the first is the start symbol) and every other symbol as a terminal, in order of first appearance; `|` only separates alternatives, so it can never be a terminal. An `ε` written next to other symbols is dropped (`ε b` is `b`); it only stays as the whole body. The FIRST and FOLLOW of every preset are checked in `presets_test.go` against the hand-computed tables of `steps/06-presets-research.md`. Only `nao-ll1` has a conflict (`M[E, id]`).

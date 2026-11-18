@@ -14,3 +14,6 @@ A small Markdown renderer for the notes panel. It builds DOM nodes, so note text
 
 ## Connections
 - Used by [[GraphPage]]: the callback turns a wikilink into a jump to that node.
+
+## Notes
+Bold and italic call the inline pass again for their inner text, so each call uses its own copy of the inline regular expression; a shared global one lost its position and looped forever. `test/markdown.test.js` (`node --test`) guards this.
