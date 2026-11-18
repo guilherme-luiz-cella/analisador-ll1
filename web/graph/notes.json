@@ -8,7 +8,17 @@
    "kind": "tool",
    "step": "3",
    "dir": "cmd/codegraph",
-   "body": "Command that feeds the `/graph` page, using only the standard library. Without flags it reads the Go source of the module and writes the code graph; with `-notes` it reads the Markdown vault and writes the note graph.\n\n## Public functions\n- `codegraph -root . -o web/graph/graph.json`: code graph, built by [[builder]].\n- `codegraph -notes graph -o web/graph/notes.json`: note graph, built by [[NotesGraph]]; exits with an error if a link, a kind or a source path in the vault is wrong.\n\n## Connections\n- Writes [[Graph]]: the code-level document (`graph.json`).\n- Writes [[NotesGraph]]: the vault document (`notes.json`).\n- Runs [[builder]]: one pass to declare nodes, one to link calls.\n\n## Notes\n`build-site.ps1` runs both modes while building `site/`."
+   "body": "Command that feeds the `/graph` page, using only the standard library. Without flags it reads the Go source of the module and writes the code graph; with `-notes` it reads the Markdown vault and writes the note graph.\n\n## Public functions\n- `codegraph -root . -o web/graph/graph.json`: code graph, built by [[builder]].\n- `codegraph -notes graph -o web/graph/notes.json`: note graph, built by [[NotesGraph]]; exits with an error if a link, a kind or a source path in the vault is wrong.\n\n## Connections\n- Writes [[Graph]]: the code-level document (`graph.json`).\n- Writes [[NotesGraph]]: the vault document (`notes.json`).\n- Runs [[builder]]: one pass to declare nodes, one to link calls.\n\n## Notes\n`build-site.ps1` runs both modes while building `site/`. Long signatures are cut at 200 runes, not bytes, so `ε` or `→` is never split."
+  },
+  {
+   "id": "ConflictCell",
+   "title": "ConflictCell",
+   "class": "ll1.ConflictCell",
+   "path": "ll1/table.go",
+   "kind": "support",
+   "step": "6",
+   "dir": "ll1",
+   "body": "A cell of the [[Table]] claimed by more than one production: the non-terminal, the column and the numbers of every production that claimed it, in order (the first one keeps the cell). The web uses it to highlight the cell and print all the productions in it.\n\n## Connections\n- Recorded by [[Table]]: `BuildTable` adds one per conflicting cell, next to the text in `Conflicts`."
   },
   {
    "id": "Console",
@@ -18,7 +28,7 @@
    "kind": "cli",
    "step": "1",
    "dir": "cmd/analisador",
-   "body": "`prepareConsole() bool`, with one file per platform (`console_windows.go` and `console_other.go`). It says whether the output can show ANSI colors.\n\n## Public functions\n- `prepareConsole() bool`: on Windows turns on virtual terminal processing through `kernel32`; elsewhere checks that stdout is a character device. False when the output is piped.\n\n## Notes\nThe Windows file uses the standard `syscall` package; `golang.org/x/sys` is not allowed in this project."
+   "body": "`prepareConsole() (colors bool, restore func())`, with one file per platform (`console_windows.go` and `console_other.go`). It says whether the output can show ANSI colors and returns the function that undoes its console changes.\n\n## Public functions\n- `prepareConsole() (colors bool, restore func())`: on Windows switches the console to UTF-8 (code page 65001) and turns on virtual terminal processing through `kernel32`; `restore` puts back the original code pages and console mode. Elsewhere it checks that stdout is a character device and `restore` does nothing. Colors are false when the output is piped.\n\n## Notes\nThe Windows file uses the standard `syscall` package; `golang.org/x/sys` is not allowed in this project."
   },
   {
    "id": "Edge",
@@ -38,7 +48,7 @@
    "kind": "support",
    "step": "1",
    "dir": "ll1",
-   "body": "Random sentence generation for the terminal menu options 5 and 6 and for the web buttons.\n\n## Public functions\n- `Generate(g, rng, maxDepth) string`: random leftmost derivation from the start symbol; from `maxDepth` on, only the productions with the shortest derivation height are chosen, so it always ends. Lexemes: `x y z a b soma total` and numbers 0..99, joined by spaces.\n- `GenerateInvalid(g, rng) string`: mutates a valid sentence (drop a token, duplicate an operator, add an unbalanced parenthesis or insert an illegal character) and retries until [[Parser]] rejects it.\n\n## Connections\n- Uses [[Grammar]]: the productions to derive from.\n- Calls [[Parser]]: to confirm a mutated sentence is really rejected.\n- Builds [[Table]]: `GenerateInvalid` needs one to run the parser."
+   "body": "Random sentence generation for the terminal menu options 5 and 6 and for the web buttons, for any grammar.\n\n## Public functions\n- `Generate(g, rng, maxDepth) string`: random leftmost derivation from the start symbol; from `maxDepth` on, only the productions with the shortest derivation height are chosen, so it always ends, even for the left-recursive `E -\u003e E + T | T`. Lexemes: `x y z a b soma total` and numbers 0..99, joined by spaces. Assumes every non-terminal derives some sentence (true for every preset).\n- `GenerateInvalid(g, rng) string`: mutates a valid sentence (drop a token, duplicate an operator, add an unbalanced parenthesis or insert an illegal character) and retries until [[Parser]] rejects it. An empty result (dropping the only token of `x`) is skipped, so the sentence is never blank. \"Operators\" are the one-character terminals of `g`; illegal characters that are terminals of `g` (such as `;` or `#`) are skipped.\n\n## Connections\n- Uses [[Grammar]]: the productions to derive from.\n- Calls [[Parser]]: to confirm a mutated sentence is really rejected.\n- Builds [[Table]]: `GenerateInvalid` needs one to run the parser.\n\n## Notes\n`DefaultMaxDepth = 4` keeps sentences short enough to read the trace on a projector; the terminal, the web bridge and `GenerateInvalid` all use it."
   },
   {
    "id": "Grammar",
@@ -48,7 +58,7 @@
    "kind": "support",
    "step": "1",
    "dir": "ll1",
-   "body": "The fixed expression grammar: start symbol, non-terminals, terminals and the productions in display order. FIRST and FOLLOW live in `ll1/sets.go`; the constants `Epsilon` (`ε`), `EndMarker` (`$`), `TerminalID` and `TerminalNum` are defined here.\n\n## Public functions\n- `Default() *Grammar`: the assignment grammar, productions 1..11.\n- `IsTerminal(s) bool`, `IsNonTerminal(s) bool`: symbol membership.\n- `ProductionsOf(nonTerminal) []Production`: alternatives of one non-terminal, in order.\n- `String() string`: one line per non-terminal, alternatives joined by ` | `.\n- `First()`, `FirstOfSequence(seq)`, `Follow()`: the sets, implemented in [[Sets]].\n\n## Connections\n- Holds [[Production]]: the rules it is made of.\n- Computes through [[Sets]]: FIRST and FOLLOW.\n\n## Notes\nFIRST and FOLLOW are computed by the fixed-point algorithm, never hard-coded; the tests compare them against the textbook table."
+   "body": "A context-free grammar (the assignment grammar or one of the [[Preset]] grammars): start symbol, non-terminals, terminals and the productions in display order. FIRST and FOLLOW live in `ll1/sets.go`; the constants `Epsilon` (`ε`), `EndMarker` (`$`), `TerminalID` and `TerminalNum` are defined here.\n\n## Public functions\n- `Default() *Grammar`: the assignment grammar, productions 1..11. It is also the first preset.\n- `IsTerminal(s) bool`, `IsNonTerminal(s) bool`: symbol membership.\n- `ProductionsOf(nonTerminal) []Production`: alternatives of one non-terminal, in order.\n- `String() string`: one line per non-terminal, alternatives joined by ` | `.\n- `First()`, `FirstOfSequence(seq)`, `Follow()`: the sets, implemented in [[Sets]].\n\n## Connections\n- Holds [[Production]]: the rules it is made of.\n- Computes through [[Sets]]: FIRST and FOLLOW.\n\n## Notes\nFIRST and FOLLOW are computed by the fixed-point algorithm, never hard-coded; the tests compare them against the textbook table."
   },
   {
    "id": "Graph",
@@ -68,7 +78,7 @@
    "kind": "web",
    "step": "3",
    "dir": "web",
-   "body": "The `/graph` page: a force-directed graph in the style of Obsidian's graph view, drawn with the pinned `vis-network` 9.1.9 file kept in `web/graph/vendor/`. The \"Notas\" mode shows this vault; the \"Código\" mode shows the Go code graph (packages, files, types, functions and calls).\n\n## Public functions\n- Mode switch \"Notas | Código\": loads `notes.json` or `graph.json` on first use.\n- Node click: opens the side panel; a note is rendered as Markdown with a link to its source file on GitHub, a code node shows signature, doc and snippet.\n- Search, kind filters, \"Ajustar à tela\".\n\n## Connections\n- Reads [[NotesGraph]]: `notes.json`, written by `codegraph -notes`.\n- Reads [[Graph]]: `graph.json`, written by `codegraph`.\n- Renders bodies with [[MiniMarkdown]]: headings, lists, code and clickable wikilinks.\n\n## Notes\nNode size follows the link count; labels fade in with the zoom (hubs first); hovering a node dims everything but its neighbors. Dark by default, light with `prefers-color-scheme: light`."
+   "body": "The `/graph` page: a force-directed graph in the style of Obsidian's graph view, drawn with the pinned `vis-network` 9.1.9 file kept in `web/graph/vendor/`. The \"Notas\" mode shows this vault; the \"Código\" mode shows the Go code graph (packages, files, types, functions and calls).\n\n## Public functions\n- Mode switch \"Notas | Código\": loads `notes.json` or `graph.json` on first use.\n- Node click: opens the side panel; a note is rendered as Markdown with a link to its source file on GitHub, a code node shows signature, doc and snippet.\n- Search, kind filters, \"Ajustar à tela\".\n\n## Connections\n- Reads [[NotesGraph]]: `notes.json`, written by `codegraph -notes`.\n- Reads [[Graph]]: `graph.json`, written by `codegraph`.\n- Renders bodies with [[MiniMarkdown]]: headings, lists, code and clickable wikilinks.\n\n## Notes\nNode size follows the link count; labels fade in with the zoom (hubs first); hovering a node dims everything but its neighbors. Dark by default, light with `prefers-color-scheme: light`; the CSS colors are read once and cached until the color scheme changes. The URL hash names the open node (`#notas/\u003cnota\u003e` or `#codigo/\u003cid\u003e`); a malformed hash just opens the notes view."
   },
   {
    "id": "Lexer",
@@ -78,7 +88,7 @@
    "kind": "support",
    "step": "1",
    "dir": "ll1",
-   "body": "The scanner of the sentence, in `ll1/lexer.go`: turns the typed text into [[Token]] values before the parser sees it.\n\n## Public functions\n- `Tokenize(input string) ([]Token, error)`: identifiers `[A-Za-z_][A-Za-z0-9_]*` become `id`, digit runs `num`, `+ - * / ( )` stand for themselves and spaces, tabs and line breaks are skipped. The last token is always `$`. Any other character stops the scan with a [[LexicalError]].\n\n## Connections\n- Produces [[Token]]: one per lexeme, plus the `$` end marker.\n- Returns [[LexicalError]]: for the first character that starts no token.\n\n## Notes\nThe input is read as runes, so the reported column is right for accented text."
+   "body": "The scanner of the sentence, in `ll1/lexer.go`: turns the typed text into [[Token]] values before the parser sees it. It follows the grammar being parsed.\n\n## Public functions\n- `TokenizeFor(g *Grammar, input string) ([]Token, error)`: a word `[A-Za-z_][A-Za-z0-9_]*` equal to a terminal of `g` (a keyword such as `and`, `var`, `int`) becomes that terminal and any other word becomes `id`; digit runs become `num`; a character that is a one-character terminal of `g` stands for itself; spaces, tabs and line breaks are skipped. The last token is always `$`. Any other character stops the scan with a [[LexicalError]].\n- `Tokenize(input string) ([]Token, error)`: `TokenizeFor` with the assignment grammar, so `+ - * / ( )` are the only symbols.\n\n## Connections\n- Reads [[Grammar]]: its terminals decide keywords and symbols.\n- Produces [[Token]]: one per lexeme, plus the `$` end marker.\n- Returns [[LexicalError]]: for the first character that starts no token.\n\n## Notes\nThe input is read as runes, so the reported column is right for accented text. The words `id` and `num` are never keywords: typed, they are identifiers, as in the assignment lexer. There are no two-character tokens."
   },
   {
    "id": "LexicalError",
@@ -98,7 +108,7 @@
    "kind": "web",
    "step": "3",
    "dir": "web",
-   "body": "A small Markdown renderer for the notes panel. It builds DOM nodes, so note text can never inject HTML.\n\n## Public functions\n- `MiniMarkdown.render(markdown, { wikilink })`: returns a document fragment with headings, paragraphs, bullet and numbered lists, fenced code, quotes, `code`, bold, italic, `http(s)` links and `[[wikilinks]]`. The `wikilink(name, label)` callback returns the link element, or null so the text stays plain.\n\n## Connections\n- Used by [[GraphPage]]: the callback turns a wikilink into a jump to that node."
+   "body": "A small Markdown renderer for the notes panel. It builds DOM nodes, so note text can never inject HTML.\n\n## Public functions\n- `MiniMarkdown.render(markdown, { wikilink })`: returns a document fragment with headings, paragraphs, bullet and numbered lists, fenced code, quotes, `code`, bold, italic, `http(s)` links and `[[wikilinks]]`. The `wikilink(name, label)` callback returns the link element, or null so the text stays plain.\n\n## Connections\n- Used by [[GraphPage]]: the callback turns a wikilink into a jump to that node.\n\n## Notes\nBold and italic call the inline pass again for their inner text, so each call uses its own copy of the inline regular expression; a shared global one lost its position and looped forever. `test/markdown.test.js` (`node --test`) guards this."
   },
   {
    "id": "Node",
@@ -148,7 +158,27 @@
    "kind": "support",
    "step": "1",
    "dir": "ll1",
-   "body": "The non-recursive predictive parser: an explicit stack driven by the parsing table.\n\n## Public functions\n- `Parse(t *Table, input string) Result`: tokenizes, then loops: top `$` with input `$` accepts; a terminal on top must match the current token; a non-terminal is replaced by the body of `M[top, token]` pushed in reverse. Every action, including the final accept or error, is recorded as a [[Step]].\n\n## Connections\n- Uses [[Lexer]]: `Tokenize` splits the input.\n- Uses [[Table]]: picks the production for each non-terminal.\n- Reads [[LexicalError]]: turns it into a one-step rejected trace.\n- Returns [[Result]]: verdict, message, tokens and steps.\n\n## Notes\nA lexical error yields a one-step trace (stack `[$ E]`, input = tokens read so far, the bad character and `$`) so the screen always shows a trace ending in an error."
+   "body": "The non-recursive predictive parser: an explicit stack driven by the parsing table.\n\n## Public functions\n- `Parse(t *Table, input string) Result`: refuses a table with conflicts (one error step, message `A gramática não é LL(1): a tabela tem conflitos.`); otherwise tokenizes with the lexer of the table's grammar, then loops: top `$` with input `$` accepts; a terminal on top must match the current token; a non-terminal is replaced by the body of `M[top, token]` pushed in reverse. Every action, including the final accept or error, is recorded as a [[Step]].\n\n## Connections\n- Uses [[Lexer]]: `TokenizeFor` splits the input with the grammar's terminals.\n- Uses [[Table]]: picks the production for each non-terminal; its conflicts make the parser refuse.\n- Reads [[LexicalError]]: turns it into a one-step rejected trace.\n- Returns [[Result]]: verdict, message, tokens and steps.\n\n## Notes\nA lexical error yields a one-step trace (stack `[$ E]`, input = tokens read so far, the bad character and `$`) so the screen always shows a trace ending in an error."
+  },
+  {
+   "id": "Preset",
+   "title": "Preset",
+   "class": "ll1.Preset",
+   "path": "ll1/presets.go",
+   "kind": "support",
+   "step": "6",
+   "dir": "ll1",
+   "body": "A fixed example grammar the user can pick (20 in all): id, pt-BR name and description, [[PresetGroup]], author, source title and URL for the published ones, whether it was adapted to LL(1), the [[Grammar]] itself, sentences of the language (`Examples`) and sentences that must be rejected (`InvalidExamples`).\n\n## Public functions\n- `Presets() []Preset`: every preset, the assignment grammar (`DefaultPresetID = \"expressoes\"`, built by `Default()`) first, then 4 own examples, then 15 from the literature. Each call builds fresh grammars.\n- `PresetByID(id) (Preset, bool)`: lookup by id; false for an unknown id.\n\n## Connections\n- Holds [[Grammar]]: built from rule text such as `\"E -\u003e E + T | T\"` by the unexported `grammarFrom`.\n- Grouped by [[PresetGroup]]: Trabalho, Exemplos or Da literatura e da web.\n\n## Notes\n`grammarFrom` takes the heads as non-terminals (the first is the start symbol) and every other symbol as a terminal, in order of first appearance; `|` only separates alternatives, so it can never be a terminal. An `ε` written next to other symbols is dropped (`ε b` is `b`); it only stays as the whole body. The FIRST and FOLLOW of every preset are checked in `presets_test.go` against the hand-computed tables of `steps/06-presets-research.md`. Only `nao-ll1` has a conflict (`M[E, id]`)."
+  },
+  {
+   "id": "PresetGroup",
+   "title": "PresetGroup",
+   "class": "ll1.PresetGroup",
+   "path": "ll1/presets.go",
+   "kind": "support",
+   "step": "6",
+   "dir": "ll1",
+   "body": "Where a [[Preset]] comes from: `GroupAssignment` (the graded grammar), `GroupExamples` (written for this project) or `GroupLiterature` (published grammars). The web groups the dropdown with one `\u003coptgroup\u003e` per group and the CLI prints one heading per group.\n\n## Public functions\n- `Label() string`: the pt-BR heading, \"Trabalho\", \"Exemplos\" or \"Da literatura e da web\"."
   },
   {
    "id": "Production",
@@ -198,7 +228,7 @@
    "kind": "support",
    "step": "1",
    "dir": "ll1",
-   "body": "The LL(1) parsing table `M[non-terminal, terminal]` holding production numbers. `Columns` are the terminals plus `$`; `Conflicts` is empty for an LL(1) grammar.\n\n## Public functions\n- `BuildTable(g *Grammar) *Table`: puts `A -\u003e α` in `M[A, a]` for each `a` in FIRST(α) and, when ε is in FIRST(α), in `M[A, b]` for each `b` in FOLLOW(A). A cell claimed twice is recorded in `Conflicts` (Portuguese text); the first production keeps it.\n- `Production(nonTerminal, column) (Production, bool)`: the production in a cell; false for an error cell.\n\n## Connections\n- Reads [[Grammar]]: the productions and symbol order.\n- Uses [[Sets]]: FIRST and FOLLOW decide which cells are filled.\n- Returns [[Production]]: from a cell lookup."
+   "body": "The LL(1) parsing table `M[non-terminal, terminal]` holding production numbers. `Columns` are the terminals plus `$`; `Conflicts` is empty for an LL(1) grammar.\n\n## Public functions\n- `BuildTable(g *Grammar) *Table`: puts `A -\u003e α` in `M[A, a]` for each `a` in FIRST(α) and, when ε is in FIRST(α), in `M[A, b]` for each `b` in FOLLOW(A). A cell claimed twice is recorded in `Conflicts` (Portuguese text) and in `ConflictCells`; the first production keeps it.\n- `Production(nonTerminal, column) (Production, bool)`: the production in a cell; false for an error cell. Production numbers are 1-based positions in `Grammar.Productions`, so the lookup is by index.\n\n## Connections\n- Reads [[Grammar]]: the productions and symbol order.\n- Uses [[Sets]]: FIRST and FOLLOW decide which cells are filled.\n- Returns [[Production]]: from a cell lookup.\n- Records [[ConflictCell]]: one per cell with more than one production."
   },
   {
    "id": "Token",
@@ -218,7 +248,7 @@
    "kind": "wasm",
    "step": "2",
    "dir": "cmd/wasm",
-   "body": "Entry point of the browser build (`GOOS=js GOARCH=wasm`). It exposes the `ll1` package as `globalThis.ll1` and keeps the program alive with `select {}`.\n\n## Public functions\n- `ll1.grammar()`, `ll1.sets()`, `ll1.table()`: JSON strings for the grammar, the FIRST and FOLLOW rows and the parsing table.\n- `ll1.parse(sentence)`: JSON string with the verdict, tokens and steps.\n- `ll1.generate()`, `ll1.generateInvalid()`: the sentence itself, as plain text.\n\n## Connections\n- Uses [[Grammar]]: `Default` is the grammar served to the page.\n- Uses [[Table]]: built once at start; cells and conflicts are copied to [[tableJSON]].\n- Calls [[Parser]]: `parse` runs it and converts the [[Result]].\n- Calls [[Generator]]: for the two generate buttons.\n- Builds [[grammarJSON]], [[setsRowJSON]], [[tableJSON]] and [[resultJSON]]: the shapes the page receives.\n\n## Notes\nThe JSON types below mirror the Go types so that the page never sees Go structs. Errors in encoding come back as `{\"error\": ...}`."
+   "body": "Entry point of the browser build (`GOOS=js GOARCH=wasm`). It exposes the `ll1` package as `globalThis.ll1` and keeps the program alive with `select {}`.\n\n## Public functions\n- `ll1.presets()`: JSON list of the preset grammars ([[presetJSON]]).\n- `ll1.grammar(id?)`, `ll1.sets(id?)`, `ll1.table(id?)`: JSON strings for the grammar, the FIRST and FOLLOW rows and the parsing table.\n- `ll1.parse(sentence, id?)`: JSON string with the verdict, tokens and steps.\n- `ll1.generate(id?)`, `ll1.generateInvalid(id?)`: the sentence itself, as plain text.\n\nThe optional `id` picks a preset; a missing or unknown id means the assignment grammar.\n\n## Connections\n- Uses [[Preset]]: every preset is loaded at start as a [[loaded]] value with its table.\n- Uses [[Table]]: built once per preset; cells and conflicts are copied to [[tableJSON]].\n- Calls [[Parser]]: `parse` runs it and converts the [[Result]].\n- Calls [[Generator]]: for the two generate buttons.\n- Builds [[grammarJSON]], [[setsRowJSON]], [[tableJSON]] and [[resultJSON]]: the shapes the page receives.\n\n## Notes\nThe JSON types mirror the Go types so that the page never sees Go structs. Encoding cannot fail for these plain types, so an error panics instead of returning half-built JSON."
   },
   {
    "id": "WebApp",
@@ -228,7 +258,7 @@
    "kind": "web",
    "step": "2",
    "dir": "web",
-   "body": "The analyzer page (`web/index.html`, `app.js`, `style.css`) served at the site root. It loads `main.wasm`, shows the grammar, the FIRST and FOLLOW sets and the parsing table, takes a typed or generated sentence and shows the verdict with the tokens and the stack, step by step or all at once.\n\n## Public functions\n- Button handlers in `app.js`: Analisar, Gerar válida, Gerar inválida, Limpar, the example sentences and the step controls (anterior, próximo, reproduzir).\n\n## Connections\n- Calls [[Wasm]]: `globalThis.ll1.grammar()`, `sets()`, `table()`, `parse()`, `generate()` and `generateInvalid()` return JSON strings.\n- Reads [[resultJSON]]: tokens, steps and the verdict drawn on screen.\n- Reads [[tableJSON]]: the parsing table; the cell a step consulted (from [[cellRefJSON]]) is highlighted.\n- Reads [[grammarJSON]]: the productions and symbol lists shown in the grammar panel.\n- Reads [[setsRowJSON]]: one row per non-terminal in the FIRST and FOLLOW table.\n\n## Notes\nAll text from the parser is put on the page with `textContent`, never as HTML. The page links to [[GraphPage]] (`/graph`)."
+   "body": "The analyzer page (`web/index.html`, `app.js`, `style.css`) served at the site root. It loads `main.wasm`, lets the user pick a grammar in the \"Gramática\" dropdown (grouped with `\u003coptgroup\u003e`, remembered in the URL query as `?g=\u003cid\u003e`, so the section links in the hash do not drop it; an old `#g=\u003cid\u003e` link is rewritten once), shows the grammar, the FIRST and FOLLOW sets and the parsing table, takes a typed or generated sentence and shows the verdict with the tokens and the stack, step by step or all at once.\n\n## Public functions\n- Button handlers in `app.js`: Analisar, Gerar válida, Gerar inválida, Limpar, the example sentences of the selected grammar and the step controls (anterior, próximo, reproduzir).\n- The dropdown: changing it re-renders grammar, FIRST/FOLLOW, LL(1) checks, table and examples and clears the analysis.\n\n## Connections\n- Calls [[Wasm]]: `globalThis.ll1.presets()`, `grammar(id)`, `sets(id)`, `table(id)`, `parse(input, id)`, `generate(id)` and `generateInvalid(id)` return JSON strings.\n- Reads [[presetJSON]]: dropdown entries, \"Fonte\" line, description and example buttons.\n- Reads [[resultJSON]]: tokens, steps and the verdict drawn on screen.\n- Reads [[tableJSON]]: the parsing table; the cell a step consulted (from [[cellRefJSON]]) is highlighted.\n- Reads [[grammarJSON]]: the productions and symbol lists shown in the grammar panel; the LL(1) condition panel uses the FIRST of each body from [[productionJSON]].\n- Reads [[setsRowJSON]]: one row per non-terminal in the FIRST and FOLLOW table.\n\n## Notes\nAll text from the parser is put on the page with `textContent`, never as HTML. The written explanation (why LL(1), requirements, derivation) belongs to the assignment grammar and is shown only when it is selected; other grammars show their description and source instead. A grammar with conflicts gets the verdict \"NÃO ANALISADA\" and its conflicting cells highlighted. The page links to [[GraphPage]] (`/graph`)."
   },
   {
    "id": "app",
@@ -238,7 +268,7 @@
    "kind": "cli",
    "step": "1",
    "dir": "cmd/analisador",
-   "body": "The terminal program: pt-BR menu (1 Gramática, 2 FIRST e FOLLOW, 3 Tabela, 4 Digitar, 5 Gerar válida, 6 Gerar inválida, 0 Sair). Options 4 to 6 print the tokens, the step table (Passo, Pilha, Entrada, Ação) and the result, then wait for Enter and show the menu again.\n\n## Public functions\n- `run(in, out, colors, rng)`: the menu loop; ends on 0 or at the end of the input. Used by `main` and by the tests.\n\n## Connections\n- Reads [[menuOption]]: the table of menu entries it dispatches on.\n- Draws with [[palette]]: boxes, aligned tables and optional ANSI colors.\n- Calls [[Console]]: `prepareConsole` decides whether colors can be used.\n- Uses [[Grammar]]: grammar, FIRST and FOLLOW sets for options 1 and 2.\n- Uses [[Table]]: option 3 prints it.\n- Calls [[Parser]]: options 4 to 6 trace the recognition.\n- Calls [[Generator]]: options 5 and 6 create the sentence.\n\n## Notes\nFrames and tables are drawn by `render.go`. Colors are ANSI, used only when `NO_COLOR` is unset and the console accepts them; piped output is plain."
+   "body": "The terminal program: pt-BR menu (1 Gramática, 2 FIRST e FOLLOW, 3 Tabela, 4 Digitar, 5 Gerar válida, 6 Gerar inválida, 7 Trocar gramática, 0 Sair). The menu header names the current grammar; option 7 lists the presets by group, with author, source and URL, and switches by number (Enter keeps the current one). Options 4 to 6 print the tokens, the step table (Passo, Pilha, Entrada, Ação) and the result, then wait for Enter and show the menu again.\n\n## Public functions\n- `run(in, out, colors, rng)`: the menu loop; ends on 0 or at the end of the input. Used by `main` and by the tests.\n\n## Connections\n- Reads [[menuOption]]: the table of menu entries it dispatches on.\n- Draws with [[palette]]: boxes, aligned tables and optional ANSI colors.\n- Calls [[Console]]: `prepareConsole` decides whether colors can be used.\n- Uses [[Preset]]: starts with the assignment grammar; option 7 switches.\n- Uses [[Grammar]]: grammar, FIRST and FOLLOW sets for options 1 and 2.\n- Uses [[Table]]: option 3 prints it.\n- Calls [[Parser]]: options 4 to 6 trace the recognition.\n- Calls [[Generator]]: options 5 and 6 create the sentence.\n\n## Notes\nFrames and tables are drawn by `render.go`. Generated sentences use `ll1.DefaultMaxDepth`, the same depth as the web. Colors are ANSI, used only when `NO_COLOR` is unset and the console accepts them; piped output is plain."
   },
   {
    "id": "builder",
@@ -268,7 +298,17 @@
    "kind": "wasm",
    "step": "2",
    "dir": "cmd/wasm",
-   "body": "The grammar for the page: start symbol, productions, the grouped lines (`E' -\u003e + T E' | - T E' | ε`), terminals and non-terminals.\n\n## Connections\n- Holds [[productionJSON]]: the numbered rules.\n- Mirrors [[Grammar]]: start symbol, symbol lists and `String()` lines."
+   "body": "The grammar for the page: start symbol, productions, terminals and non-terminals. The page draws the grouped form (`E' → + T E' | - T E' | ε`) itself from the productions.\n\n## Connections\n- Holds [[productionJSON]]: the numbered rules.\n- Mirrors [[Grammar]]: start symbol and symbol lists."
+  },
+  {
+   "id": "loaded",
+   "title": "loaded",
+   "class": "wasm.loaded",
+   "path": "cmd/wasm/main.go",
+   "kind": "wasm",
+   "step": "6",
+   "dir": "cmd/wasm",
+   "body": "A [[Preset]] together with its parsing [[Table]], built once when the WebAssembly program starts, so switching grammars on the page never rebuilds a table.\n\n## Connections\n- Holds [[Preset]]: the grammar and its texts.\n- Holds [[Table]]: used by `parse` and `table`."
   },
   {
    "id": "menuOption",
@@ -301,6 +341,16 @@
    "body": "A parsed `.go` file with what the second pass needs to resolve calls: its directory, relative path, AST, the import names mapped to module directories and the function declarations.\n\n## Connections\n- Collected by [[builder]]: one per non-test file of the module."
   },
   {
+   "id": "presetJSON",
+   "title": "presetJSON",
+   "class": "wasm.presetJSON",
+   "path": "cmd/wasm/main.go",
+   "kind": "wasm",
+   "step": "6",
+   "dir": "cmd/wasm",
+   "body": "One entry of `ll1.presets()`: id, name, description, group label, `isDefault`, author, source, URL, `adapted`, `isLL1` (the table has no conflicts), the terminals and the valid and invalid example sentences. The page builds the \"Gramática\" dropdown and the example buttons from it.\n\n## Connections\n- Mirrors [[Preset]]: every field except the grammar, which comes from `ll1.grammar(id)`.\n- Labels from [[PresetGroup]]: `group` is its pt-BR label."
+  },
+  {
    "id": "productionJSON",
    "title": "productionJSON",
    "class": "wasm.productionJSON",
@@ -308,7 +358,7 @@
    "kind": "wasm",
    "step": "2",
    "dir": "cmd/wasm",
-   "body": "A grammar rule for the page: `number`, `head`, `body` and the printed `text` (`E' -\u003e + T E'`).\n\n## Connections\n- Mirrors [[Production]]: same fields, plus the printed text."
+   "body": "A grammar rule for the page: `number`, `head`, `body` and `first`, the FIRST of the body computed by Go, which the LL(1) condition panel uses.\n\n## Connections\n- Mirrors [[Production]]: same fields, plus FIRST of the body.\n- Uses [[Sets]]: `FirstOfSequence` fills `first`, so the page has no second FIRST implementation."
   },
   {
    "id": "resultJSON",
@@ -348,7 +398,7 @@
    "kind": "wasm",
    "step": "2",
    "dir": "cmd/wasm",
-   "body": "One cell of the parsing table: the column, the production `number` (0 means an empty, error cell) and its printed `text`.\n\n## Connections\n- Mirrors [[Production]]: number and text of the production the cell holds."
+   "body": "One cell of the parsing table: the column and the production `number` (0 means an empty, error cell). A conflicting cell also lists every production claiming it in `conflicts`.\n\n## Connections\n- Mirrors [[Production]]: the number of the production the cell holds; the page looks up its body in [[grammarJSON]].\n- Copies [[ConflictCell]]: the production numbers of a conflicting cell."
   },
   {
    "id": "tableJSON",
@@ -358,7 +408,7 @@
    "kind": "wasm",
    "step": "2",
    "dir": "cmd/wasm",
-   "body": "The whole parsing table for the page: `columns`, `rows` and the list of `conflicts` (empty for this grammar).\n\n## Connections\n- Holds [[tableRowJSON]]: one per non-terminal.\n- Mirrors [[Table]]: columns and conflicts are copied from it."
+   "body": "The whole parsing table for the page: `columns`, `rows` and the list of `conflicts` (empty for an LL(1) grammar).\n\n## Connections\n- Holds [[tableRowJSON]]: one per non-terminal.\n- Mirrors [[Table]]: columns and conflicts are copied from it."
   },
   {
    "id": "tableRowJSON",
@@ -395,6 +445,10 @@
    "to": "builder"
   },
   {
+   "from": "ConflictCell",
+   "to": "Table"
+  },
+  {
    "from": "Edge",
    "to": "Node"
   },
@@ -409,6 +463,10 @@
   {
    "from": "Generator",
    "to": "Table"
+  },
+  {
+   "from": "Grammar",
+   "to": "Preset"
   },
   {
    "from": "Grammar",
@@ -437,6 +495,10 @@
   {
    "from": "GraphPage",
    "to": "NotesGraph"
+  },
+  {
+   "from": "Lexer",
+   "to": "Grammar"
   },
   {
    "from": "Lexer",
@@ -483,6 +545,18 @@
    "to": "Table"
   },
   {
+   "from": "Preset",
+   "to": "Grammar"
+  },
+  {
+   "from": "Preset",
+   "to": "PresetGroup"
+  },
+  {
+   "from": "PresetGroup",
+   "to": "Preset"
+  },
+  {
    "from": "Result",
    "to": "Parser"
   },
@@ -501,6 +575,10 @@
   {
    "from": "Sets",
    "to": "Table"
+  },
+  {
+   "from": "Table",
+   "to": "ConflictCell"
   },
   {
    "from": "Table",
@@ -524,11 +602,11 @@
   },
   {
    "from": "Wasm",
-   "to": "Grammar"
+   "to": "Parser"
   },
   {
    "from": "Wasm",
-   "to": "Parser"
+   "to": "Preset"
   },
   {
    "from": "Wasm",
@@ -541,6 +619,14 @@
   {
    "from": "Wasm",
    "to": "grammarJSON"
+  },
+  {
+   "from": "Wasm",
+   "to": "loaded"
+  },
+  {
+   "from": "Wasm",
+   "to": "presetJSON"
   },
   {
    "from": "Wasm",
@@ -572,6 +658,14 @@
   },
   {
    "from": "WebApp",
+   "to": "presetJSON"
+  },
+  {
+   "from": "WebApp",
+   "to": "productionJSON"
+  },
+  {
+   "from": "WebApp",
    "to": "resultJSON"
   },
   {
@@ -597,6 +691,10 @@
   {
    "from": "app",
    "to": "Parser"
+  },
+  {
+   "from": "app",
+   "to": "Preset"
   },
   {
    "from": "app",
@@ -639,6 +737,14 @@
    "to": "productionJSON"
   },
   {
+   "from": "loaded",
+   "to": "Preset"
+  },
+  {
+   "from": "loaded",
+   "to": "Table"
+  },
+  {
    "from": "menuOption",
    "to": "app"
   },
@@ -651,8 +757,20 @@
    "to": "builder"
   },
   {
+   "from": "presetJSON",
+   "to": "Preset"
+  },
+  {
+   "from": "presetJSON",
+   "to": "PresetGroup"
+  },
+  {
    "from": "productionJSON",
    "to": "Production"
+  },
+  {
+   "from": "productionJSON",
+   "to": "Sets"
   },
   {
    "from": "resultJSON",
@@ -680,7 +798,15 @@
   },
   {
    "from": "tableCellJSON",
+   "to": "ConflictCell"
+  },
+  {
+   "from": "tableCellJSON",
    "to": "Production"
+  },
+  {
+   "from": "tableCellJSON",
+   "to": "grammarJSON"
   },
   {
    "from": "tableJSON",

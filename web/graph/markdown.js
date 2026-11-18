@@ -1,12 +1,13 @@
-// Tiny Markdown renderer for the notes panel. It builds DOM nodes (never HTML
-// strings), so note text can't inject markup. Supported: headings, paragraphs,
-// bullet and numbered lists, fenced code, block quotes, rules, `code`, **bold**,
-// *italic*, [text](https://...) and [[wikilinks]].
+// Leitor mínimo de Markdown para o painel das notas. Monta nós do DOM (nunca
+// texto HTML), então o texto de uma nota não consegue injetar marcação. Aceita:
+// títulos, parágrafos, listas com marcador e numeradas, código cercado,
+// citações, linhas horizontais, `código`, **negrito**, *itálico*,
+// [texto](https://...) e [[wikilinks]].
 (() => {
   'use strict';
 
   const INLINE = /`([^`]+)`|\[\[([^\]\n]+)\]\]|\[([^\]\n]+)\]\((https?:\/\/[^)\s]+)\)|\*\*([^*\n]+)\*\*|\*([^*\s][^*\n]*?)\*/g;
-  const HEADING_SHIFT = 2; // "# Title" is the panel title, so "##" renders as an h3
+  const HEADING_SHIFT = 2; // "# Título" é o título do painel, então "##" vira h3
   const MAX_HEADING = 6;
 
   function make(tag, props = {}, ...children) {
@@ -16,12 +17,14 @@
     return node;
   }
 
-  // options.wikilink(target, label) returns a Node, or null when the note does not exist.
+  // options.wikilink(target, label) devolve um nó, ou null quando a nota não existe.
   function inline(text, options) {
+    // Uma expressão por chamada: negrito e itálico chamam inline de novo, e uma
+    // expressão global compartilhada perderia a posição (lastIndex) do laço de fora.
+    const pattern = new RegExp(INLINE.source, 'g');
     const out = [];
     let last = 0;
-    INLINE.lastIndex = 0;
-    for (let m = INLINE.exec(text); m; m = INLINE.exec(text)) {
+    for (let m = pattern.exec(text); m; m = pattern.exec(text)) {
       if (m.index > last) out.push(text.slice(last, m.index));
       if (m[1] !== undefined) {
         out.push(make('code', { textContent: m[1] }));
@@ -37,7 +40,7 @@
       } else {
         out.push(make('em', {}, ...inline(m[6], options)));
       }
-      last = INLINE.lastIndex;
+      last = pattern.lastIndex;
     }
     if (last < text.length) out.push(text.slice(last));
     return out;
@@ -88,7 +91,7 @@
         while (i < lines.length && listMatch(lines[i])) {
           const parts = [listMatch(lines[i])[3]];
           i += 1;
-          // Indented lines that are not new items continue the current item.
+          // Linhas recuadas que não são item novo continuam o item atual.
           while (i < lines.length && !isBlank(lines[i]) && !listMatch(lines[i]) && /^\s+\S/.test(lines[i])) {
             parts.push(lines[i].trim());
             i += 1;

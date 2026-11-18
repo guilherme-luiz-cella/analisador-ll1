@@ -152,7 +152,7 @@ Células vazias indicam erro. Não há conflitos, portanto a gramática é LL(1)
 
 ## Outras gramáticas
 
-A gramática do trabalho é a das expressões, e ela é a seleção padrão. Para demonstração, o programa traz mais 19 gramáticas fixas, escolhidas no menu "Gramática" do site (o endereço guarda a escolha, por exemplo `#g=json`) ou na opção 7 do terminal. O usuário não digita gramáticas.
+A gramática do trabalho é a das expressões, e ela é a seleção padrão. Para demonstração, o programa traz mais 19 gramáticas fixas, escolhidas no menu "Gramática" do site (o endereço guarda a escolha, por exemplo `?g=json`) ou na opção 7 do terminal. O usuário não digita gramáticas.
 
 - Exemplos próprios: expressões booleanas, declarações de variáveis, listas aninhadas e um exemplo NÃO LL(1) (`E -> E + T | T`). Neste último a tabela mostra o conflito em `M[E, id]` e o analisador se recusa a analisar.
 - Da literatura e da web, com autor e fonte na tela: JSON (RFC 4627), S-expressões (McCarthy), PL/0 (Wirth), programas em linha reta (Appel), TINY (Louden), expressões regulares (Might), Dyck, XML (W3C), CSV (RFC 4180), lógica proposicional (IEP), cálculo lambda (SEP), tabelas Lua (manual do Lua 5.4), notação de Wirth (EBNF), Brainf*ck e declarações Pascal (ISO 7185). Quase todas foram adaptadas para LL(1) (fatoração, remoção de recursão à esquerda, repetições viradas listas com ε); o processo e os conjuntos calculados à mão estão em `steps/06-presets-research.md`.
@@ -191,6 +191,7 @@ Para desativar as cores, defina a variável de ambiente `NO_COLOR`.
 ```
 go test ./...
 go vet ./...
+node --test
 go build -o dist/analisador.exe ./cmd/analisador
 ```
 
@@ -198,3 +199,4 @@ Estrutura:
 
 - `ll1/`: gramática, FIRST e FOLLOW, tabela, analisador léxico, analisador sintático com pilha e gerador de sentenças.
 - `cmd/analisador/`: programa de terminal.
+- `test/`: teste em Node do leitor de Markdown da página do grafo.

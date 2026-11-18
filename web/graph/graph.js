@@ -51,12 +51,13 @@
         'Role para dar zoom: os nomes aparecem conforme você se aproxima.',
         'Arraste os nós para reorganizar. Use a busca para achar uma nota.',
       ],
+      // one e many são as palavras do resumo e do selo; nas notas são o nome da categoria.
       kinds: [
-        { key: 'support', label: 'Biblioteca ll1', color: '--k-support' },
-        { key: 'cli', label: 'Terminal', color: '--k-cli' },
-        { key: 'wasm', label: 'WebAssembly', color: '--k-wasm' },
-        { key: 'tool', label: 'Ferramenta', color: '--k-tool' },
-        { key: 'web', label: 'Página web', color: '--k-web' },
+        { key: 'support', label: 'Biblioteca ll1', one: 'biblioteca ll1', many: 'biblioteca ll1', color: '--k-support' },
+        { key: 'cli', label: 'Terminal', one: 'terminal', many: 'terminal', color: '--k-cli' },
+        { key: 'wasm', label: 'WebAssembly', one: 'webassembly', many: 'webassembly', color: '--k-wasm' },
+        { key: 'tool', label: 'Ferramenta', one: 'ferramenta', many: 'ferramenta', color: '--k-tool' },
+        { key: 'web', label: 'Página web', one: 'página web', many: 'página web', color: '--k-web' },
       ],
       edges: [{ key: 'link', label: 'Links', color: '--e-link', arrow: false, width: 1, length: 85 }],
     },
@@ -92,7 +93,13 @@
 
   const $ = (id) => document.getElementById(id);
   const root = document.documentElement;
-  const cssVar = (name) => getComputedStyle(root).getPropertyValue(name).trim();
+  // getComputedStyle é caro e seria chamado várias vezes por nó a cada quadro de zoom;
+  // as cores só mudam quando o tema muda, então ficam guardadas até lá.
+  const palette = new Map();
+  const cssVar = (name) => {
+    if (!palette.has(name)) palette.set(name, getComputedStyle(root).getPropertyValue(name).trim());
+    return palette.get(name);
+  };
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
   function rgba(color, alpha) {
@@ -130,7 +137,7 @@
   const kindOf = (node) => state.mode.kinds.find((k) => k.key === node.kind) || state.mode.kinds[0];
   const edgeSpec = (key) => state.mode.edges.find((e) => e.key === key);
 
-  // ---- data --------------------------------------------------------------
+  // ---- dados -------------------------------------------------------------
 
   function prepare(mode, raw) {
     const graph = mode.key === 'notes'
@@ -172,11 +179,11 @@
     && nodeVisible(state.data.byId.get(edge.from))
     && nodeVisible(state.data.byId.get(edge.to));
 
-  // ---- styling -----------------------------------------------------------
+  // ---- estilo ------------------------------------------------------------
 
   const focusId = () => state.hoverId || state.selectedId;
 
-  // Emphasis comes from the hovered or selected node (with its neighbors) or from the search.
+  // O destaque vem do nó sob o mouse ou selecionado (com os vizinhos) ou da busca.
   function emphasized() {
     const id = focusId();
     if (id) {
@@ -190,7 +197,7 @@
     return state.matches;
   }
 
-  // Labels fade in as the view zooms in; hubs show up earlier than leaves.
+  // Os nomes aparecem aos poucos com o zoom; nós com muitas ligações aparecem antes das folhas.
   function zoomAlpha(node) {
     const relative = state.scale / (state.fitScale || state.scale || 1);
     const boost = 1 + HUB_LABEL_BOOST * ((state.data.degree.get(node.id) || 0) / state.data.maxDegree);
@@ -248,7 +255,7 @@
     state.edges.update(state.data.graph.edges.map((edge, index) => edgeStyle(edge, index, emph)));
   }
 
-  // Zoom only changes the labels, so it updates just the fonts.
+  // O zoom só muda os nomes, então atualiza apenas as fontes.
   function refreshLabels() {
     state.labelFrame = 0;
     const emph = emphasized();
@@ -262,7 +269,7 @@
     state.labelFrame = requestAnimationFrame(refreshLabels);
   }
 
-  // ---- side panel: shared ------------------------------------------------
+  // ---- painel lateral: comum ---------------------------------------------
 
   function linkButton(node) {
     const kind = kindOf(node);
@@ -293,7 +300,7 @@
 
   function badge(node) {
     const kind = kindOf(node);
-    const span = el('span', { className: 'badge', textContent: kind.one || kind.label });
+    const span = el('span', { className: 'badge', textContent: kind.one });
     span.style.setProperty('--badge-color', cssVar(kind.color));
     return span;
   }
@@ -303,7 +310,7 @@
     return el('a', { className: 'location', href, target: '_blank', rel: 'noopener', textContent: text });
   }
 
-  // ---- side panel: notes -------------------------------------------------
+  // ---- painel lateral: notas ---------------------------------------------
 
   function wikilink(name, label) {
     const id = state.data.names.get(name.toLowerCase());
@@ -337,7 +344,7 @@
     );
   }
 
-  // ---- side panel: code --------------------------------------------------
+  // ---- painel lateral: código --------------------------------------------
 
   function relatedBlocks(node) {
     const blocks = [];
@@ -378,7 +385,7 @@
     const { mode, data } = state;
     const counts = mode.kinds.map((kind) => {
       const total = data.graph.nodes.filter((n) => n.kind === kind.key).length;
-      return `${total} ${mode.key === 'code' ? (total === 1 ? kind.one : kind.many) : kind.label.toLowerCase()}`;
+      return `${total} ${total === 1 ? kind.one : kind.many}`;
     });
     const summary = mode.key === 'notes'
       ? `${data.graph.nodes.length} notas e ${data.graph.edges.length} ligações. ${counts.join(' · ')}.`
@@ -396,7 +403,7 @@
     );
   }
 
-  // ---- selection and search ----------------------------------------------
+  // ---- seleção e busca ---------------------------------------------------
 
   function select(id, { focus = false, scroll = false } = {}) {
     const node = state.data.byId.get(id);
@@ -434,7 +441,7 @@
   function matchingNodes(query) {
     const needle = query.trim().toLowerCase();
     if (!needle) return null;
-    // Best matches first: exact name, then name prefix, then name contains, then the rest.
+    // Melhores primeiro: nome exato, depois começo do nome, depois nome que contém, depois o resto.
     const rank = (node) => {
       const label = node.label.toLowerCase();
       const name = label.split('.').pop();
@@ -466,7 +473,7 @@
     }
   }
 
-  // ---- filters -----------------------------------------------------------
+  // ---- filtros -----------------------------------------------------------
 
   function chip(spec, checked, swatchClass, onChange) {
     const input = el('input', { type: 'checkbox', checked });
@@ -497,7 +504,7 @@
     onSearch();
   }
 
-  // ---- network -----------------------------------------------------------
+  // ---- rede --------------------------------------------------------------
 
   function createNetwork(initialId) {
     const { mode, data } = state;
@@ -588,12 +595,17 @@
   }
 
   function initialTarget() {
-    const hash = decodeURIComponent(location.hash.slice(1));
+    let hash;
+    try {
+      hash = decodeURIComponent(location.hash.slice(1));
+    } catch {
+      // Um hash malformado (ex.: "%E0") abre só o grafo de notas, sem travar a página.
+      hash = '';
+    }
     for (const mode of Object.values(MODES)) {
       if (hash.startsWith(mode.hashPrefix)) return { key: mode.key, id: hash.slice(mode.hashPrefix.length) };
     }
-    // Old links used the bare code-graph id, such as "type:ll1.Parser".
-    return hash.includes(':') ? { key: 'code', id: hash } : { key: 'notes', id: null };
+    return { key: 'notes', id: null };
   }
 
   function start() {
@@ -609,6 +621,7 @@
       if (state.mode !== mode) setMode(mode.key);
     }));
     window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+      palette.clear();
       if (!state.nodes) return;
       buildFilters();
       applyStyles();

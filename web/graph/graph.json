@@ -62,7 +62,7 @@
    "package": "cmd/wasm",
    "file": "cmd/wasm/main.go",
    "line": 1,
-   "signature": "import encoding/json, math/rand, strings, syscall/js, time, analisador-ll1/ll1"
+   "signature": "import encoding/json, math/rand, syscall/js, time, analisador-ll1/ll1"
   },
   {
    "id": "file:ll1/generator.go",
@@ -101,6 +101,15 @@
    "signature": "import fmt"
   },
   {
+   "id": "file:ll1/presets.go",
+   "label": "presets.go",
+   "kind": "file",
+   "package": "ll1",
+   "file": "ll1/presets.go",
+   "line": 1,
+   "signature": "import strings"
+  },
+  {
    "id": "file:ll1/sets.go",
    "label": "sets.go",
    "kind": "file",
@@ -123,10 +132,21 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 183,
-   "doc": "analyze parses the sentence and prints its tokens, trace and result.",
+   "line": 236,
+   "doc": "analyze analisa a sentença e imprime os tokens, o rastro e o resultado.",
    "signature": "func (a *app) analyze(sentence string)",
-   "code": "func (a *app) analyze(sentence string) {\n\ta.print(fmt.Sprintf(\"Sentença: %s\\n\\n\", a.colors.paint(styleBold, sentence)))\n\tresult := ll1.Parse(a.table, sentence)\n\n\ta.print(\"Tokens:\\n\")\n\tvar tokenRows [][]string\n\tfor _, token := range result.Tokens {\n\t\ttokenRows = append(tokenRows, []string{token.Kind, token.Lexeme, strconv.Itoa(token.Pos)})\n\t}\n\tif len(tokenRows) == 0 {\n\t\ta.print(\"  (nenhum token reconhecido)\\n\")\n\t} else {\n\t\ta.print(table(a.colors, []string{\"Token\", \"Lexema\", \"Posição\"}, tokenRows, nil))\n\t}\n\n\ta.print(\"\\nPassos da análise (topo da pilha à direita):\\n\")\n\tconst actionColumn = 3\n\tvar stepRows [][]string\n\tfor _, step := range result.Steps {\n\t\tstepRows = append(stepRows, []string{\n\t\t\tstrconv.Itoa(step.Number),\n\t\t\tstrings.Join(step.Stack, \" \"),\n\t\t\tstrings.Join(step.Input, \" \"),\n\t\t\tstep.Action,\n\t\t})\n\t}\n\ta.print(table(a.colors, []string{\"Passo\", \"Pilha\", \"Entrada\", \"Ação\"}, stepRows,\n\t\tfunc(_, column int, text string) string {\n\t\t\tswitch {\n\t\t\tcase column != actionColumn:\n\t\t\t\treturn \"\"\n\t\t\tcase text == ll1.ActionAccept:\n\t\t\t\treturn styleGood\n\t\t\tcase strings.HasPrefix(text, ll1.ErrorPrefix):\n\t\t\t\treturn styleBad\n\t\t\t}\n\t\t\treturn \"\"\n\t\t}))\n\n\tstyle := styleBad\n// … (+5 linhas)"
+   "code": "func (a *app) analyze(sentence string) {\n\ta.print(fmt.Sprintf(\"Sentença: %s\\n\\n\", a.colors.paint(styleBold, sentence)))\n\tresult := ll1.Parse(a.table, sentence)\n\n\ta.print(\"Tokens:\\n\")\n\tvar tokenRows [][]string\n\tfor _, token := range result.Tokens {\n\t\ttokenRows = append(tokenRows, []string{token.Kind, token.Lexeme, strconv.Itoa(token.Pos)})\n\t}\n\tif len(tokenRows) == 0 {\n\t\ta.print(\"  (nenhum token reconhecido)\\n\")\n\t} else {\n\t\ta.print(table(a.colors, []string{\"Token\", \"Lexema\", \"Posição\"}, tokenRows, nil))\n\t}\n\n\ta.print(\"\\nPassos da análise (topo da pilha à direita):\\n\")\n\tconst actionColumn = 3\n\tvar stepRows [][]string\n\tfor _, step := range result.Steps {\n\t\tstepRows = append(stepRows, []string{\n\t\t\tstrconv.Itoa(step.Number),\n\t\t\tstrings.Join(step.Stack, \" \"),\n\t\t\tstrings.Join(step.Input, \" \"),\n\t\t\tstep.Action,\n\t\t})\n\t}\n\ta.print(table(a.colors, []string{\"Passo\", \"Pilha\", \"Entrada\", \"Ação\"}, stepRows,\n\t\tfunc(column int, text string) string {\n\t\t\tswitch {\n\t\t\tcase column != actionColumn:\n\t\t\t\treturn \"\"\n\t\t\tcase text == ll1.ActionAccept:\n\t\t\t\treturn styleGood\n\t\t\tcase strings.HasPrefix(text, ll1.ErrorPrefix):\n\t\t\t\treturn styleBad\n\t\t\t}\n\t\t\treturn \"\"\n\t\t}))\n\n\tstyle := styleBad\n// … (+5 linhas)"
+  },
+  {
+   "id": "func:cmd/analisador.app.choosePreset",
+   "label": "app.choosePreset",
+   "kind": "method",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 190,
+   "doc": "choosePreset lista as gramáticas prontas por grupo, com autor e fonte, e troca para a escolhida pelo número.",
+   "signature": "func (a *app) choosePreset() bool",
+   "code": "func (a *app) choosePreset() bool {\n\ta.section(\"TROCAR GRAMÁTICA\")\n\tpresets := ll1.Presets()\n\tfor i, preset := range presets {\n\t\tif i == 0 || preset.Group != presets[i-1].Group {\n\t\t\ta.print(\"\\n\" + a.colors.paint(styleTitle, preset.Group.Label()) + \"\\n\")\n\t\t}\n\t\tmarker := \" \"\n\t\tif preset.ID == a.preset.ID {\n\t\t\tmarker = \"*\"\n\t\t}\n\t\ta.print(fmt.Sprintf(\" %s%3d  %s\\n\", marker, i+1, preset.Name))\n\t\tif preset.Author != \"\" {\n\t\t\ta.print(a.colors.paint(styleDim, \"        \"+sourceText(preset)) + \"\\n\")\n\t\t\ta.print(a.colors.paint(styleDim, \"        \"+preset.URL) + \"\\n\")\n\t\t}\n\t}\n\tchoice, ok := a.readLine(fmt.Sprintf(\"\\nNúmero da gramática (1 a %d, Enter mantém a atual): \", len(presets)))\n\tif !ok {\n\t\treturn false\n\t}\n\tchoice = strings.TrimSpace(choice)\n\tif choice == \"\" {\n\t\ta.print(\"Gramática mantida: \" + a.preset.Name + \"\\n\")\n\t\treturn true\n\t}\n\tnumber, err := strconv.Atoi(choice)\n\tif err != nil || number \u003c 1 || number \u003e len(presets) {\n\t\ta.print(a.colors.paint(styleBad, \"Opção inválida.\") + \" Gramática mantida: \" + a.preset.Name + \"\\n\")\n\t\treturn true\n\t}\n\ta.use(presets[number-1])\n\ta.print(a.colors.paint(styleGood, \"Gramática atual: \"+a.preset.Name) + \"\\n\")\n\treturn true\n}"
   },
   {
    "id": "func:cmd/analisador.app.generateInvalid",
@@ -134,7 +154,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 176,
+   "line": 182,
    "signature": "func (a *app) generateInvalid() bool",
    "code": "func (a *app) generateInvalid() bool {\n\ta.section(\"GERAR SENTENÇA INVÁLIDA\")\n\ta.analyze(ll1.GenerateInvalid(a.grammar, a.rng))\n\treturn true\n}"
   },
@@ -144,9 +164,9 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 170,
+   "line": 176,
    "signature": "func (a *app) generateValid() bool",
-   "code": "func (a *app) generateValid() bool {\n\ta.section(\"GERAR SENTENÇA VÁLIDA\")\n\ta.analyze(ll1.Generate(a.grammar, a.rng, generatedMaxDepth))\n\treturn true\n}"
+   "code": "func (a *app) generateValid() bool {\n\ta.section(\"GERAR SENTENÇA VÁLIDA\")\n\ta.analyze(ll1.Generate(a.grammar, a.rng, ll1.DefaultMaxDepth))\n\treturn true\n}"
   },
   {
    "id": "func:cmd/analisador.app.print",
@@ -154,7 +174,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 256,
+   "line": 310,
    "signature": "func (a *app) print(text string)",
    "code": "func (a *app) print(text string) {\n\tfmt.Fprint(a.out, text)\n}"
   },
@@ -164,9 +184,9 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 104,
+   "line": 106,
    "signature": "func (a *app) printMenu()",
-   "code": "func (a *app) printMenu() {\n\ta.print(\"\\n\" + a.colors.paint(styleTitle, \"MENU\") + \"\\n\")\n\tfor _, option := range menu {\n\t\ta.print(fmt.Sprintf(\"  %s  %s\\n\", a.colors.paint(styleBold, option.key), option.label))\n\t}\n\ta.print(fmt.Sprintf(\"  %s  %s\\n\\n\", a.colors.paint(styleBold, exitKey), \"Sair\"))\n}"
+   "code": "func (a *app) printMenu() {\n\ta.print(\"\\n\" + a.colors.paint(styleTitle, \"MENU\") + \"  \" + a.colors.paint(styleDim, \"Gramática: \"+a.preset.Name) + \"\\n\")\n\tfor _, option := range menu {\n\t\ta.print(fmt.Sprintf(\"  %s  %s\\n\", a.colors.paint(styleBold, option.key), option.label))\n\t}\n\ta.print(fmt.Sprintf(\"  %s  %s\\n\\n\", a.colors.paint(styleBold, exitKey), \"Sair\"))\n}"
   },
   {
    "id": "func:cmd/analisador.app.productionList",
@@ -174,7 +194,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 229,
+   "line": 282,
    "signature": "func (a *app) productionList() string",
    "code": "func (a *app) productionList() string {\n\tvar sb strings.Builder\n\tfor _, p := range a.grammar.Productions {\n\t\tsb.WriteString(fmt.Sprintf(\"  %2d. %s\\n\", p.Number, p))\n\t}\n\treturn sb.String()\n}"
   },
@@ -184,10 +204,10 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 247,
-   "doc": "readLine prompts and returns the next input line, or false at end of input.",
+   "line": 300,
+   "doc": "readLine mostra o prompt e devolve a próxima linha, ou false no fim da entrada.",
    "signature": "func (a *app) readLine(prompt string) (string, bool)",
-   "code": "func (a *app) readLine(prompt string) (string, bool) {\n\ta.print(prompt)\n\tif !a.in.Scan() {\n\t\treturn \"\", false\n\t}\n\t// Keep inner and leading spaces so token positions match what was typed.\n\treturn strings.TrimRight(a.in.Text(), \"\\r\"), true\n}"
+   "code": "func (a *app) readLine(prompt string) (string, bool) {\n\ta.print(prompt)\n\tif !a.in.Scan() {\n\t\treturn \"\", false\n\t}\n\t// Mantém os espaços do início e do meio para as posições dos tokens\n\t// baterem com o que foi digitado.\n\treturn strings.TrimRight(a.in.Text(), \"\\r\"), true\n}"
   },
   {
    "id": "func:cmd/analisador.app.section",
@@ -195,7 +215,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 237,
+   "line": 290,
    "signature": "func (a *app) section(title string)",
    "code": "func (a *app) section(title string) {\n\ta.print(\"\\n\" + box(a.colors, title) + \"\\n\")\n}"
   },
@@ -205,9 +225,9 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 112,
+   "line": 114,
    "signature": "func (a *app) showGrammar() bool",
-   "code": "func (a *app) showGrammar() bool {\n\ta.section(\"GRAMÁTICA\")\n\ta.print(a.grammar.String())\n\ta.print(fmt.Sprintf(\"\\nSímbolo inicial: %s\\n\", a.grammar.Start))\n\ta.print(fmt.Sprintf(\"Não terminais:   %s\\n\", strings.Join(a.grammar.NonTerminals, \" \")))\n\ta.print(fmt.Sprintf(\"Terminais:       %s (fim da entrada: %s)\\n\\n\", strings.Join(a.grammar.Terminals, \" \"), ll1.EndMarker))\n\ta.print(\"Produções numeradas (os números aparecem na tabela de parsing):\\n\")\n\ta.print(a.productionList())\n\treturn true\n}"
+   "code": "func (a *app) showGrammar() bool {\n\ta.section(\"GRAMÁTICA\")\n\ta.print(a.colors.paint(styleBold, a.preset.Name) + \"\\n\" + a.preset.Description + \"\\n\")\n\tif a.preset.Author != \"\" {\n\t\ta.print(sourceText(a.preset) + \"\\n\")\n\t}\n\ta.print(\"\\n\" + a.grammar.String())\n\ta.print(fmt.Sprintf(\"\\nSímbolo inicial: %s\\n\", a.grammar.Start))\n\ta.print(fmt.Sprintf(\"Não terminais:   %s\\n\", strings.Join(a.grammar.NonTerminals, \" \")))\n\ta.print(fmt.Sprintf(\"Terminais:       %s (fim da entrada: %s)\\n\\n\", strings.Join(a.grammar.Terminals, \" \"), ll1.EndMarker))\n\ta.print(\"Produções numeradas (os números aparecem na tabela de parsing):\\n\")\n\ta.print(a.productionList())\n\treturn true\n}"
   },
   {
    "id": "func:cmd/analisador.app.showSets",
@@ -215,7 +235,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 123,
+   "line": 129,
    "signature": "func (a *app) showSets() bool",
    "code": "func (a *app) showSets() bool {\n\ta.section(\"CONJUNTOS FIRST E FOLLOW\")\n\tfirst, follow := a.grammar.First(), a.grammar.Follow()\n\tvar rows [][]string\n\tfor _, nt := range a.grammar.NonTerminals {\n\t\trows = append(rows, []string{nt, setText(first[nt]), setText(follow[nt])})\n\t}\n\ta.print(table(a.colors, []string{\"Não terminal\", \"FIRST\", \"FOLLOW\"}, rows, nil))\n\treturn true\n}"
   },
@@ -225,9 +245,9 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 134,
+   "line": 140,
    "signature": "func (a *app) showTable() bool",
-   "code": "func (a *app) showTable() bool {\n\ta.section(\"TABELA DE PARSING LL(1)\")\n\theaders := append([]string{\"M\"}, a.table.Columns...)\n\tvar rows [][]string\n\tfor _, nt := range a.grammar.NonTerminals {\n\t\trow := []string{nt}\n\t\tfor _, column := range a.table.Columns {\n\t\t\tcell := emptyCell\n\t\t\tif number, ok := a.table.Cells[nt][column]; ok {\n\t\t\t\tcell = strconv.Itoa(number)\n\t\t\t}\n\t\t\trow = append(row, cell)\n\t\t}\n\t\trows = append(rows, row)\n\t}\n\ta.print(table(a.colors, headers, rows, nil))\n\ta.print(\"Células vazias indicam erro sintático.\\n\")\n\tif len(a.table.Conflicts) == 0 {\n\t\ta.print(\"Nenhum conflito: a gramática é LL(1).\\n\\n\")\n\t} else {\n\t\ta.print(a.colors.paint(styleBad, strings.Join(a.table.Conflicts, \"\\n\")) + \"\\n\\n\")\n\t}\n\ta.print(a.productionList())\n\treturn true\n}"
+   "code": "func (a *app) showTable() bool {\n\ta.section(\"TABELA DE PARSING LL(1)\")\n\theaders := append([]string{\"M\"}, a.table.Columns...)\n\tvar rows [][]string\n\tfor _, nt := range a.grammar.NonTerminals {\n\t\trow := []string{nt}\n\t\tfor _, column := range a.table.Columns {\n\t\t\tcell := \"\" // célula vazia é erro sintático\n\t\t\tif number, ok := a.table.Cells[nt][column]; ok {\n\t\t\t\tcell = strconv.Itoa(number)\n\t\t\t}\n\t\t\trow = append(row, cell)\n\t\t}\n\t\trows = append(rows, row)\n\t}\n\ta.print(table(a.colors, headers, rows, nil))\n\ta.print(\"Células vazias indicam erro sintático.\\n\")\n\tif len(a.table.Conflicts) == 0 {\n\t\ta.print(\"Nenhum conflito: a gramática é LL(1).\\n\\n\")\n\t} else {\n\t\ta.print(a.colors.paint(styleBad, strings.Join(a.table.Conflicts, \"\\n\")) + \"\\n\\n\")\n\t}\n\ta.print(a.productionList())\n\treturn true\n}"
   },
   {
    "id": "func:cmd/analisador.app.typeSentence",
@@ -235,9 +255,20 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 160,
+   "line": 166,
    "signature": "func (a *app) typeSentence() bool",
    "code": "func (a *app) typeSentence() bool {\n\ta.section(\"DIGITAR SENTENÇA\")\n\tsentence, ok := a.readLine(\"Digite a sentença: \")\n\tif !ok {\n\t\treturn false\n\t}\n\ta.analyze(sentence)\n\treturn true\n}"
+  },
+  {
+   "id": "func:cmd/analisador.app.use",
+   "label": "app.use",
+   "kind": "method",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 100,
+   "doc": "use torna preset a gramática atual; a tabela é montada uma vez aqui.",
+   "signature": "func (a *app) use(preset ll1.Preset)",
+   "code": "func (a *app) use(preset ll1.Preset) {\n\ta.preset = preset\n\ta.grammar = preset.Grammar\n\ta.table = ll1.BuildTable(preset.Grammar)\n}"
   },
   {
    "id": "func:cmd/analisador.app.waitForEnter",
@@ -245,7 +276,7 @@
    "kind": "method",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 241,
+   "line": 294,
    "signature": "func (a *app) waitForEnter() bool",
    "code": "func (a *app) waitForEnter() bool {\n\t_, ok := a.readLine(\"\\n\" + a.colors.paint(styleDim, \"Pressione Enter para voltar ao menu\"))\n\treturn ok\n}"
   },
@@ -256,7 +287,7 @@
    "package": "cmd/analisador",
    "file": "cmd/analisador/render.go",
    "line": 31,
-   "doc": "box draws a double-line frame around the lines.",
+   "doc": "box desenha uma moldura de linha dupla em volta das linhas.",
    "signature": "func box(p palette, lines ...string) string",
    "code": "func box(p palette, lines ...string) string {\n\twidth := 0\n\tfor _, line := range lines {\n\t\twidth = max(width, utf8.RuneCountInString(line))\n\t}\n\tvar sb strings.Builder\n\tsb.WriteString(\"╔\" + strings.Repeat(\"═\", width+4) + \"╗\\n\")\n\tfor _, line := range lines {\n\t\tsb.WriteString(\"║  \" + p.paint(styleTitle, pad(line, width)) + \"  ║\\n\")\n\t}\n\tsb.WriteString(\"╚\" + strings.Repeat(\"═\", width+4) + \"╝\\n\")\n\treturn sb.String()\n}"
   },
@@ -266,7 +297,7 @@
    "kind": "func",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 95,
+   "line": 90,
    "signature": "func findOption(key string) (menuOption, bool)",
    "code": "func findOption(key string) (menuOption, bool) {\n\tfor _, option := range menu {\n\t\tif option.key == key {\n\t\t\treturn option, true\n\t\t}\n\t}\n\treturn menuOption{}, false\n}"
   },
@@ -276,7 +307,7 @@
    "kind": "func",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 53,
+   "line": 49,
    "signature": "func main()",
    "code": "func main() {\n\tcanColor, restore := prepareConsole()\n\tdefer restore()\n\tcolors := os.Getenv(\"NO_COLOR\") == \"\" \u0026\u0026 canColor\n\trng := rand.New(rand.NewSource(time.Now().UnixNano()))\n\trun(os.Stdin, os.Stdout, colors, rng)\n}"
   },
@@ -286,7 +317,7 @@
    "kind": "func",
    "package": "cmd/analisador",
    "file": "cmd/analisador/render.go",
-   "line": 91,
+   "line": 92,
    "signature": "func pad(text string, width int) string",
    "code": "func pad(text string, width int) string {\n\treturn text + strings.Repeat(\" \", width-utf8.RuneCountInString(text))\n}"
   },
@@ -307,7 +338,7 @@
    "package": "cmd/analisador",
    "file": "cmd/analisador/console_other.go",
    "line": 9,
-   "doc": "prepareConsole reports whether stdout is a terminal that can show colors. The returned function is a no-op on this platform.",
+   "doc": "prepareConsole diz se a saída é um terminal que mostra cores. A função devolvida não faz nada nesta plataforma.",
    "signature": "func prepareConsole() (colors bool, restore func())",
    "code": "func prepareConsole() (colors bool, restore func()) {\n\tinfo, err := os.Stdout.Stat()\n\treturn err == nil \u0026\u0026 info.Mode()\u0026os.ModeCharDevice != 0, func() {}\n}"
   },
@@ -318,9 +349,9 @@
    "package": "cmd/analisador",
    "file": "cmd/analisador/console_windows.go",
    "line": 30,
-   "doc": "prepareConsole switches an attached Windows console to UTF-8 (so accents, the epsilon and box drawing display correctly whatever the code page was) and turns on ANSI escape handling. It reports whether colors can be used: false when stdout is not a console (for example, piped) or the mode can't be set. The returned function restores the original code pages; call it before the program exits.",
+   "doc": "prepareConsole põe o console do Windows em UTF-8 (para acentos, o ε e as molduras aparecerem certos qualquer que seja a página de código) e liga os códigos ANSI. Diz se as cores podem ser usadas: false quando a saída não é um console (por exemplo, redirecionada) ou o modo não pode ser mudado. A função devolvida restaura as páginas de código e o modo originais; chame-a antes de o programa sair.",
    "signature": "func prepareConsole() (colors bool, restore func())",
-   "code": "func prepareConsole() (colors bool, restore func()) {\n\trestore = func() {}\n\thandle := os.Stdout.Fd()\n\tvar mode uint32\n\tif ok, _, _ := procGetConsoleMode.Call(handle, uintptr(unsafe.Pointer(\u0026mode))); ok == 0 {\n\t\treturn false, restore\n\t}\n\n\toldOut, _, _ := procGetConsoleOutCP.Call()\n\toldIn, _, _ := procGetConsoleCP.Call()\n\tif oldOut != 0 \u0026\u0026 oldOut != codePageUTF8 {\n\t\tif ok, _, _ := procSetConsoleOutCP.Call(codePageUTF8); ok != 0 {\n\t\t\tprev := restore\n\t\t\trestore = func() { prev(); procSetConsoleOutCP.Call(oldOut) }\n\t\t}\n\t}\n\tif oldIn != 0 \u0026\u0026 oldIn != codePageUTF8 {\n\t\tif ok, _, _ := procSetConsoleCP.Call(codePageUTF8); ok != 0 {\n\t\t\tprev := restore\n\t\t\trestore = func() { prev(); procSetConsoleCP.Call(oldIn) }\n\t\t}\n\t}\n\n\tok, _, _ := procSetConsoleMode.Call(handle, uintptr(mode|enableVirtualTerminalProcessing))\n\treturn ok != 0, restore\n}"
+   "code": "func prepareConsole() (colors bool, restore func()) {\n\trestore = func() {}\n\thandle := os.Stdout.Fd()\n\tvar mode uint32\n\tif ok, _, _ := procGetConsoleMode.Call(handle, uintptr(unsafe.Pointer(\u0026mode))); ok == 0 {\n\t\treturn false, restore\n\t}\n\n\toldOut, _, _ := procGetConsoleOutCP.Call()\n\toldIn, _, _ := procGetConsoleCP.Call()\n\tif oldOut != 0 \u0026\u0026 oldOut != codePageUTF8 {\n\t\tif ok, _, _ := procSetConsoleOutCP.Call(codePageUTF8); ok != 0 {\n\t\t\tprev := restore\n\t\t\trestore = func() { prev(); procSetConsoleOutCP.Call(oldOut) }\n\t\t}\n\t}\n\tif oldIn != 0 \u0026\u0026 oldIn != codePageUTF8 {\n\t\tif ok, _, _ := procSetConsoleCP.Call(codePageUTF8); ok != 0 {\n\t\t\tprev := restore\n\t\t\trestore = func() { prev(); procSetConsoleCP.Call(oldIn) }\n\t\t}\n\t}\n\n\tok, _, _ := procSetConsoleMode.Call(handle, uintptr(mode|enableVirtualTerminalProcessing))\n\tif ok != 0 {\n\t\tprev := restore\n\t\trestore = func() { prev(); procSetConsoleMode.Call(handle, uintptr(mode)) }\n\t}\n\treturn ok != 0, restore\n}"
   },
   {
    "id": "func:cmd/analisador.run",
@@ -328,10 +359,10 @@
    "kind": "func",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 62,
-   "doc": "run shows the menu until the user picks 0 or the input ends.",
+   "line": 58,
+   "doc": "run mostra o menu até o usuário escolher 0 ou a entrada acabar.",
    "signature": "func run(in io.Reader, out io.Writer, colors bool, rng *rand.Rand)",
-   "code": "func run(in io.Reader, out io.Writer, colors bool, rng *rand.Rand) {\n\tgrammar := ll1.Default()\n\ta := \u0026app{\n\t\tgrammar: grammar,\n\t\ttable:   ll1.BuildTable(grammar),\n\t\trng:     rng,\n\t\tin:      bufio.NewScanner(in),\n\t\tout:     out,\n\t\tcolors:  palette{enabled: colors},\n\t}\n\ta.print(box(a.colors,\n\t\t\"ANALISADOR SINTÁTICO LL(1)\",\n\t\t\"Preditivo tabular (não recursivo)\"))\n\tfor {\n\t\ta.printMenu()\n\t\tchoice, ok := a.readLine(\"Escolha uma opção: \")\n\t\tchoice = strings.TrimSpace(choice)\n\t\tif !ok || choice == exitKey {\n\t\t\ta.print(\"\\nAté logo!\\n\")\n\t\t\treturn\n\t\t}\n\t\toption, found := findOption(choice)\n\t\tif !found {\n\t\t\ta.print(a.colors.paint(styleBad, \"Opção inválida.\") + \"\\n\")\n\t\t\tcontinue\n\t\t}\n\t\tif !option.action(a) || !a.waitForEnter() {\n\t\t\ta.print(\"\\nAté logo!\\n\")\n\t\t\treturn\n\t\t}\n\t}\n}"
+   "code": "func run(in io.Reader, out io.Writer, colors bool, rng *rand.Rand) {\n\ta := \u0026app{\n\t\trng:    rng,\n\t\tin:     bufio.NewScanner(in),\n\t\tout:    out,\n\t\tcolors: palette{enabled: colors},\n\t}\n\tpreset, _ := ll1.PresetByID(ll1.DefaultPresetID)\n\ta.use(preset)\n\ta.print(box(a.colors,\n\t\t\"ANALISADOR SINTÁTICO LL(1)\",\n\t\t\"Preditivo tabular (não recursivo)\"))\n\tfor {\n\t\ta.printMenu()\n\t\tchoice, ok := a.readLine(\"Escolha uma opção: \")\n\t\tchoice = strings.TrimSpace(choice)\n\t\tif !ok || choice == exitKey {\n\t\t\ta.print(\"\\nAté logo!\\n\")\n\t\t\treturn\n\t\t}\n\t\toption, found := findOption(choice)\n\t\tif !found {\n\t\t\ta.print(a.colors.paint(styleBad, \"Opção inválida.\") + \"\\n\")\n\t\t\tcontinue\n\t\t}\n\t\tif !option.action(a) || !a.waitForEnter() {\n\t\t\ta.print(\"\\nAté logo!\\n\")\n\t\t\treturn\n\t\t}\n\t}\n}"
   },
   {
    "id": "func:cmd/analisador.setText",
@@ -339,9 +370,20 @@
    "kind": "func",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 260,
+   "line": 314,
    "signature": "func setText(symbols []string) string",
    "code": "func setText(symbols []string) string {\n\treturn \"{ \" + strings.Join(symbols, \", \") + \" }\"\n}"
+  },
+  {
+   "id": "func:cmd/analisador.sourceText",
+   "label": "sourceText",
+   "kind": "func",
+   "package": "cmd/analisador",
+   "file": "cmd/analisador/main.go",
+   "line": 227,
+   "doc": "sourceText escreve \"Fonte: autor, título\", mais o aviso de adaptação para LL(1).",
+   "signature": "func sourceText(preset ll1.Preset) string",
+   "code": "func sourceText(preset ll1.Preset) string {\n\ttext := \"Fonte: \" + preset.Author + \", \" + preset.Source\n\tif preset.Adapted {\n\t\ttext += \" (adaptado para LL(1))\"\n\t}\n\treturn text\n}"
   },
   {
    "id": "func:cmd/analisador.table",
@@ -349,10 +391,10 @@
    "kind": "func",
    "package": "cmd/analisador",
    "file": "cmd/analisador/render.go",
-   "line": 50,
-   "doc": "table draws an aligned grid with a header row. Styles are applied after padding so escape codes never break the alignment.",
+   "line": 51,
+   "doc": "table desenha uma grade alinhada com linha de cabeçalho. O estilo entra depois do preenchimento com espaços, para os códigos ANSI não contarem na largura e não desalinharem as colunas.",
    "signature": "func table(p palette, headers []string, rows [][]string, style cellStyle) string",
-   "code": "func table(p palette, headers []string, rows [][]string, style cellStyle) string {\n\twidths := make([]int, len(headers))\n\tfor i, h := range headers {\n\t\twidths[i] = utf8.RuneCountInString(h)\n\t}\n\tfor _, row := range rows {\n\t\tfor i, cell := range row {\n\t\t\twidths[i] = max(widths[i], utf8.RuneCountInString(cell))\n\t\t}\n\t}\n\tborder := func(left, middle, right string) string {\n\t\tparts := make([]string, len(widths))\n\t\tfor i, w := range widths {\n\t\t\tparts[i] = strings.Repeat(\"─\", w+2)\n\t\t}\n\t\treturn left + strings.Join(parts, middle) + right + \"\\n\"\n\t}\n\tline := func(cells []string, paint func(column int, text string) string) string {\n\t\tparts := make([]string, len(widths))\n\t\tfor i, w := range widths {\n\t\t\tparts[i] = \" \" + paint(i, pad(cells[i], w)) + \" \"\n\t\t}\n\t\treturn \"│\" + strings.Join(parts, \"│\") + \"│\\n\"\n\t}\n\n\tvar sb strings.Builder\n\tsb.WriteString(border(\"┌\", \"┬\", \"┐\"))\n\tsb.WriteString(line(headers, func(_ int, text string) string { return p.paint(styleBold, text) }))\n\tsb.WriteString(border(\"├\", \"┼\", \"┤\"))\n\tfor r, row := range rows {\n\t\tsb.WriteString(line(row, func(column int, text string) string {\n\t\t\tif style == nil {\n\t\t\t\treturn text\n\t\t\t}\n\t\t\treturn p.paint(style(r, column, row[column]), text)\n\t\t}))\n\t}\n\tsb.WriteString(border(\"└\", \"┴\", \"┘\"))\n\treturn sb.String()\n}"
+   "code": "func table(p palette, headers []string, rows [][]string, style cellStyle) string {\n\twidths := make([]int, len(headers))\n\tfor i, h := range headers {\n\t\twidths[i] = utf8.RuneCountInString(h)\n\t}\n\tfor _, row := range rows {\n\t\tfor i, cell := range row {\n\t\t\twidths[i] = max(widths[i], utf8.RuneCountInString(cell))\n\t\t}\n\t}\n\tborder := func(left, middle, right string) string {\n\t\tparts := make([]string, len(widths))\n\t\tfor i, w := range widths {\n\t\t\tparts[i] = strings.Repeat(\"─\", w+2)\n\t\t}\n\t\treturn left + strings.Join(parts, middle) + right + \"\\n\"\n\t}\n\tline := func(cells []string, paint func(column int, text string) string) string {\n\t\tparts := make([]string, len(widths))\n\t\tfor i, w := range widths {\n\t\t\tparts[i] = \" \" + paint(i, pad(cells[i], w)) + \" \"\n\t\t}\n\t\treturn \"│\" + strings.Join(parts, \"│\") + \"│\\n\"\n\t}\n\n\tvar sb strings.Builder\n\tsb.WriteString(border(\"┌\", \"┬\", \"┐\"))\n\tsb.WriteString(line(headers, func(_ int, text string) string { return p.paint(styleBold, text) }))\n\tsb.WriteString(border(\"├\", \"┼\", \"┤\"))\n\tfor _, row := range rows {\n\t\tsb.WriteString(line(row, func(column int, text string) string {\n\t\t\tif style == nil {\n\t\t\t\treturn text\n\t\t\t}\n\t\t\treturn p.paint(style(column, row[column]), text)\n\t\t}))\n\t}\n\tsb.WriteString(border(\"└\", \"┴\", \"┘\"))\n\treturn sb.String()\n}"
   },
   {
    "id": "func:cmd/codegraph.buildGraph",
@@ -371,9 +413,9 @@
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/notes.go",
    "line": 57,
-   "doc": "buildNotes reads every note under vaultDir. Problems that make the vault inconsistent with the code (duplicate names, broken links, a missing source file, an unknown kind) are all reported together.",
+   "doc": "buildNotes lê todas as notas de vaultDir. Os problemas que deixam o cofre diferente do código (nome repetido, link quebrado, arquivo de código que não existe, kind desconhecido) são todos informados juntos.",
    "signature": "func buildNotes(vaultDir, root string) (*NotesGraph, error)",
-   "code": "func buildNotes(vaultDir, root string) (*NotesGraph, error) {\n\tvar notes []Note\n\tvar problems []error\n\terr := filepath.WalkDir(vaultDir, func(p string, entry fs.DirEntry, err error) error {\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tname := entry.Name()\n\t\tif entry.IsDir() {\n\t\t\tif p != vaultDir \u0026\u0026 strings.HasPrefix(name, \".\") {\n\t\t\t\treturn filepath.SkipDir\n\t\t\t}\n\t\t\treturn nil\n\t\t}\n\t\tif !strings.HasSuffix(name, noteExt) || (name == vaultReadme \u0026\u0026 filepath.Dir(p) == filepath.Clean(vaultDir)) {\n\t\t\treturn nil\n\t\t}\n\t\tdata, err := os.ReadFile(p)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\trel, err := filepath.Rel(vaultDir, p)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tnote, err := parseNote(filepath.ToSlash(rel), string(data))\n\t\tif err != nil {\n\t\t\tproblems = append(problems, err)\n\t\t\treturn nil\n\t\t}\n\t\tnotes = append(notes, note)\n\t\treturn nil\n\t})\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\tsort.Slice(notes, func(i, j int) bool { return notes[i].ID \u003c notes[j].ID })\n\n\tbyName := map[string]string{} // lower-case name -\u003e id\n\tfor _, n := range notes {\n// … (+40 linhas)"
+   "code": "func buildNotes(vaultDir, root string) (*NotesGraph, error) {\n\tvar notes []Note\n\tvar problems []error\n\terr := filepath.WalkDir(vaultDir, func(p string, entry fs.DirEntry, err error) error {\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tname := entry.Name()\n\t\tif entry.IsDir() {\n\t\t\tif p != vaultDir \u0026\u0026 strings.HasPrefix(name, \".\") {\n\t\t\t\treturn filepath.SkipDir\n\t\t\t}\n\t\t\treturn nil\n\t\t}\n\t\tif !strings.HasSuffix(name, noteExt) || (name == vaultReadme \u0026\u0026 filepath.Dir(p) == filepath.Clean(vaultDir)) {\n\t\t\treturn nil\n\t\t}\n\t\tdata, err := os.ReadFile(p)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\trel, err := filepath.Rel(vaultDir, p)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tnote, err := parseNote(filepath.ToSlash(rel), string(data))\n\t\tif err != nil {\n\t\t\tproblems = append(problems, err)\n\t\t\treturn nil\n\t\t}\n\t\tnotes = append(notes, note)\n\t\treturn nil\n\t})\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\tsort.Slice(notes, func(i, j int) bool { return notes[i].ID \u003c notes[j].ID })\n\n\tbyName := map[string]string{} // nome em minúsculas -\u003e id\n\tfor _, n := range notes {\n// … (+40 linhas)"
   },
   {
    "id": "func:cmd/codegraph.builder.addEdge",
@@ -391,9 +433,9 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 440,
+   "line": 441,
    "signature": "func (b *builder) collectCalls(pf *parsedFile, caller string, body *ast.BlockStmt)",
-   "code": "func (b *builder) collectCalls(pf *parsedFile, caller string, body *ast.BlockStmt) {\n\t// Selector names and struct-literal keys look like identifiers but are not references.\n\tskipIdents := map[*ast.Ident]bool{}\n\tast.Inspect(body, func(n ast.Node) bool {\n\t\tswitch x := n.(type) {\n\t\tcase *ast.SelectorExpr:\n\t\t\tskipIdents[x.Sel] = true\n\t\tcase *ast.KeyValueExpr:\n\t\t\tif key, ok := x.Key.(*ast.Ident); ok {\n\t\t\t\tskipIdents[key] = true\n\t\t\t}\n\t\t}\n\t\treturn true\n\t})\n\n\tast.Inspect(body, func(n ast.Node) bool {\n\t\tswitch x := n.(type) {\n\t\tcase *ast.CallExpr:\n\t\t\tif sel, ok := x.Fun.(*ast.SelectorExpr); ok {\n\t\t\t\tb.addEdge(caller, b.resolveSelector(pf, sel), edgeCalls)\n\t\t\t}\n\t\tcase *ast.Ident:\n\t\t\t// Covers direct calls and functions passed as values; Obj is set for locals.\n\t\t\tif !skipIdents[x] \u0026\u0026 (x.Obj == nil || x.Obj.Kind == ast.Fun) {\n\t\t\t\tb.addEdge(caller, b.funcsByDir[pf.dir][x.Name], edgeCalls)\n\t\t\t}\n\t\t}\n\t\treturn true\n\t})\n}"
+   "code": "func (b *builder) collectCalls(pf *parsedFile, caller string, body *ast.BlockStmt) {\n\t// Nomes depois de ponto e chaves de struct parecem identificadores, mas não são referências.\n\tskipIdents := map[*ast.Ident]bool{}\n\tast.Inspect(body, func(n ast.Node) bool {\n\t\tswitch x := n.(type) {\n\t\tcase *ast.SelectorExpr:\n\t\t\tskipIdents[x.Sel] = true\n\t\tcase *ast.KeyValueExpr:\n\t\t\tif key, ok := x.Key.(*ast.Ident); ok {\n\t\t\t\tskipIdents[key] = true\n\t\t\t}\n\t\t}\n\t\treturn true\n\t})\n\n\tast.Inspect(body, func(n ast.Node) bool {\n\t\tswitch x := n.(type) {\n\t\tcase *ast.CallExpr:\n\t\t\tif sel, ok := x.Fun.(*ast.SelectorExpr); ok {\n\t\t\t\tb.addEdge(caller, b.resolveSelector(pf, sel), edgeCalls)\n\t\t\t}\n\t\tcase *ast.Ident:\n\t\t\t// Pega chamadas diretas e funções passadas como valor; Obj existe para nomes locais.\n\t\t\tif !skipIdents[x] \u0026\u0026 (x.Obj == nil || x.Obj.Kind == ast.Fun) {\n\t\t\t\tb.addEdge(caller, b.funcsByDir[pf.dir][x.Name], edgeCalls)\n\t\t\t}\n\t\t}\n\t\treturn true\n\t})\n}"
   },
   {
    "id": "func:cmd/codegraph.builder.declare",
@@ -402,7 +444,7 @@
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
    "line": 234,
-   "doc": "declare creates every node and the structural edges (pass one).",
+   "doc": "declare cria todos os nós e as ligações de estrutura (primeira passada).",
    "signature": "func (b *builder) declare()",
    "code": "func (b *builder) declare() {\n\tfor _, pf := range b.files {\n\t\tpkgID := packageID(pf.dir)\n\t\tpkg := b.nodes[pkgID]\n\t\tif pkg == nil {\n\t\t\tpkg = \u0026Node{ID: pkgID, Label: b.packageLabel(pf.dir), Kind: kindPackage, Package: pf.dir,\n\t\t\t\tSignature: \"package \" + pf.file.Name.Name}\n\t\t\tb.nodes[pkgID] = pkg\n\t\t}\n\t\tif pkg.Doc == \"\" {\n\t\t\tpkg.Doc = firstParagraph(pf.file.Doc)\n\t\t}\n\n\t\tfileID := \"file:\" + pf.rel\n\t\tb.nodes[fileID] = \u0026Node{ID: fileID, Label: path.Base(pf.rel), Kind: kindFile, Package: pf.dir,\n\t\t\tFile: pf.rel, Line: 1, Signature: importSummary(pf.file)}\n\t\tb.addEdge(pkgID, fileID, edgeContains)\n\n\t\tpf.imports = map[string]string{}\n\t\tfor _, spec := range pf.file.Imports {\n\t\t\tb.declareImport(pf, pkgID, spec)\n\t\t}\n\n\t\tfor _, decl := range pf.file.Decls {\n\t\t\tswitch d := decl.(type) {\n\t\t\tcase *ast.GenDecl:\n\t\t\t\tb.declareTypes(pf, fileID, d)\n\t\t\tcase *ast.FuncDecl:\n\t\t\t\tb.declareFunc(pf, fileID, d)\n\t\t\t}\n\t\t}\n\t}\n}"
   },
@@ -442,8 +484,8 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 430,
-   "doc": "link resolves calls between declared functions (pass two).",
+   "line": 431,
+   "doc": "link resolve as chamadas entre as funções declaradas (segunda passada).",
    "signature": "func (b *builder) link()",
    "code": "func (b *builder) link() {\n\tfor _, pf := range b.files {\n\t\tfor _, d := range pf.decls {\n\t\t\tif d.Body != nil {\n\t\t\t\tb.collectCalls(pf, b.declIDs[d], d.Body)\n\t\t\t}\n\t\t}\n\t}\n}"
   },
@@ -473,7 +515,7 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 471,
+   "line": 472,
    "signature": "func (b *builder) resolveSelector(pf *parsedFile, sel *ast.SelectorExpr) string",
    "code": "func (b *builder) resolveSelector(pf *parsedFile, sel *ast.SelectorExpr) string {\n\tif x, ok := sel.X.(*ast.Ident); ok \u0026\u0026 x.Obj == nil {\n\t\tif dir, imported := pf.imports[x.Name]; imported {\n\t\t\tif dir == \"\" {\n\t\t\t\treturn \"\"\n\t\t\t}\n\t\t\treturn b.funcsByDir[dir][sel.Sel.Name]\n\t\t}\n\t}\n\tif ids := b.methodsByName[sel.Sel.Name]; len(ids) == 1 {\n\t\treturn ids[0]\n\t}\n\treturn \"\"\n}"
   },
@@ -483,7 +525,7 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 486,
+   "line": 487,
    "signature": "func (b *builder) result() *Graph",
    "code": "func (b *builder) result() *Graph {\n\tgraph := \u0026Graph{Module: b.module, Nodes: []Node{}, Edges: []Edge{}}\n\tfor _, n := range b.nodes {\n\t\tgraph.Nodes = append(graph.Nodes, *n)\n\t}\n\tfor e := range b.edges {\n\t\tif b.nodes[e.From] != nil \u0026\u0026 b.nodes[e.To] != nil {\n\t\t\tgraph.Edges = append(graph.Edges, e)\n\t\t}\n\t}\n\tsort.Slice(graph.Nodes, func(i, j int) bool { return graph.Nodes[i].ID \u003c graph.Nodes[j].ID })\n\tsort.Slice(graph.Edges, func(i, j int) bool {\n\t\ta, c := graph.Edges[i], graph.Edges[j]\n\t\tif a.From != c.From {\n\t\t\treturn a.From \u003c c.From\n\t\t}\n\t\tif a.To != c.To {\n\t\t\treturn a.To \u003c c.To\n\t\t}\n\t\treturn a.Kind \u003c c.Kind\n\t})\n\treturn graph\n}"
   },
@@ -493,7 +535,7 @@
    "kind": "method",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 401,
+   "line": 402,
    "signature": "func (b *builder) snippet(file string, start, end int) string",
    "code": "func (b *builder) snippet(file string, start, end int) string {\n\tlines := b.sources[file]\n\tif start \u003c 1 || start \u003e len(lines) {\n\t\treturn \"\"\n\t}\n\tif end \u003e len(lines) {\n\t\tend = len(lines)\n\t}\n\ttotal := end - start + 1\n\tif total \u003e maxSnippetLines {\n\t\tcut := lines[start-1 : start-1+maxSnippetLines]\n\t\treturn strings.Join(cut, \"\\n\") + fmt.Sprintf(\"\\n// … (+%d linhas)\", total-maxSnippetLines)\n\t}\n\treturn strings.Join(lines[start-1:end], \"\\n\")\n}"
   },
@@ -504,7 +546,7 @@
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
    "line": 220,
-   "doc": "uniqueID avoids collisions such as several init functions in one package.",
+   "doc": "uniqueID evita ids repetidos, como várias funções init num mesmo pacote.",
    "signature": "func (b *builder) uniqueID(id string, line int) string",
    "code": "func (b *builder) uniqueID(id string, line int) string {\n\tif _, taken := b.nodes[id]; taken {\n\t\treturn fmt.Sprintf(\"%s:%d\", id, line)\n\t}\n\treturn id\n}"
   },
@@ -514,8 +556,8 @@
    "kind": "func",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/notes.go",
-   "line": 204,
-   "doc": "extractLinks returns the target of every [[wikilink]] outside code, without the |alias or #heading part.",
+   "line": 205,
+   "doc": "extractLinks devolve o destino de cada [[wikilink]] fora de código, sem a parte |apelido ou #seção.",
    "signature": "func extractLinks(body string) []string",
    "code": "func extractLinks(body string) []string {\n\tbody = fencedCodePattern.ReplaceAllString(body, \"\")\n\tbody = inlineCodePattern.ReplaceAllString(body, \"\")\n\tvar targets []string\n\tfor _, match := range wikilinkPattern.FindAllStringSubmatch(body, -1) {\n\t\ttarget := match[1]\n\t\tif i := strings.IndexAny(target, \"|#\"); i \u003e= 0 {\n\t\t\ttarget = target[:i]\n\t\t}\n\t\tif target = strings.TrimSpace(target); target != \"\" {\n\t\t\ttargets = append(targets, target)\n\t\t}\n\t}\n\treturn targets\n}"
   },
@@ -525,9 +567,9 @@
    "kind": "func",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 417,
+   "line": 418,
    "signature": "func firstParagraph(doc *ast.CommentGroup) string",
-   "code": "func firstParagraph(doc *ast.CommentGroup) string {\n\tif doc == nil {\n\t\treturn \"\"\n\t}\n\t// A doc comment's first line is often cut mid-sentence, so keep the whole first paragraph.\n\ttext := strings.TrimSpace(doc.Text())\n\tif i := strings.Index(text, \"\\n\\n\"); i \u003e= 0 {\n\t\ttext = text[:i]\n\t}\n\treturn strings.Join(strings.Fields(text), \" \")\n}"
+   "code": "func firstParagraph(doc *ast.CommentGroup) string {\n\tif doc == nil {\n\t\treturn \"\"\n\t}\n\t// A primeira linha de um comentário costuma parar no meio da frase, então fica o primeiro parágrafo inteiro.\n\ttext := strings.TrimSpace(doc.Text())\n\tif i := strings.Index(text, \"\\n\\n\"); i \u003e= 0 {\n\t\ttext = text[:i]\n\t}\n\treturn strings.Join(strings.Fields(text), \" \")\n}"
   },
   {
    "id": "func:cmd/codegraph.importSummary",
@@ -565,9 +607,10 @@
    "kind": "func",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/notes.go",
-   "line": 175,
-   "signature": "func parseFields(block string, fields map[string]string) map[string]string",
-   "code": "func parseFields(block string, fields map[string]string) map[string]string {\n\tfor _, line := range strings.Split(block, \"\\n\") {\n\t\tkey, value, ok := strings.Cut(line, \":\")\n\t\tif !ok || strings.HasPrefix(strings.TrimSpace(line), \"#\") {\n\t\t\tcontinue\n\t\t}\n\t\tfields[strings.TrimSpace(key)] = strings.Trim(strings.TrimSpace(value), `\"'`)\n\t}\n\treturn fields\n}"
+   "line": 177,
+   "doc": "parseFields lê as linhas \"chave: valor\" para dentro de fields; linhas que começam com # são comentários do YAML.",
+   "signature": "func parseFields(block string, fields map[string]string)",
+   "code": "func parseFields(block string, fields map[string]string) {\n\tfor _, line := range strings.Split(block, \"\\n\") {\n\t\tkey, value, ok := strings.Cut(line, \":\")\n\t\tif !ok || strings.HasPrefix(strings.TrimSpace(line), \"#\") {\n\t\t\tcontinue\n\t\t}\n\t\tfields[strings.TrimSpace(key)] = strings.Trim(strings.TrimSpace(value), `\"'`)\n\t}\n}"
   },
   {
    "id": "func:cmd/codegraph.parseNote",
@@ -576,7 +619,7 @@
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/notes.go",
    "line": 139,
-   "doc": "parseNote reads one note; rel is its path under the vault, e.g. \"ll1/Parser.md\".",
+   "doc": "parseNote lê uma nota; rel é o caminho dentro do cofre, ex.: \"ll1/Parser.md\".",
    "signature": "func parseNote(rel, text string) (Note, error)",
    "code": "func parseNote(rel, text string) (Note, error) {\n\tid := strings.TrimSuffix(path.Base(rel), noteExt)\n\tfields, body, err := splitFrontmatter(text)\n\tif err != nil {\n\t\treturn Note{}, fmt.Errorf(\"%s: %w\", rel, err)\n\t}\n\tnote := Note{ID: id, Title: id, Class: fields[\"class\"], Path: fields[\"path\"],\n\t\tKind: fields[\"kind\"], Step: fields[\"step\"]}\n\tif dir := path.Dir(rel); dir != \".\" {\n\t\tnote.Dir = dir\n\t}\n\tif note.Kind != \"\" \u0026\u0026 !noteKinds[note.Kind] {\n\t\treturn Note{}, fmt.Errorf(\"%s: unknown kind %q\", rel, note.Kind)\n\t}\n\tnote.Title, note.Body = splitTitle(id, body)\n\treturn note, nil\n}"
   },
@@ -586,7 +629,7 @@
    "kind": "func",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
-   "line": 393,
+   "line": 394,
    "signature": "func printNode(node any) string",
    "code": "func printNode(node any) string {\n\tvar buf bytes.Buffer\n\tif err := printer.Fprint(\u0026buf, token.NewFileSet(), node); err != nil {\n\t\treturn \"\"\n\t}\n\treturn buf.String()\n}"
   },
@@ -607,7 +650,7 @@
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
    "line": 358,
-   "doc": "receiverName returns the receiver type name, or \"\" for a plain function.",
+   "doc": "receiverName devolve o nome do tipo receptor, ou \"\" numa função comum.",
    "signature": "func receiverName(d *ast.FuncDecl) string",
    "code": "func receiverName(d *ast.FuncDecl) string {\n\tif d.Recv == nil || len(d.Recv.List) == 0 {\n\t\treturn \"\"\n\t}\n\texpr := d.Recv.List[0].Type\n\tfor {\n\t\tswitch t := expr.(type) {\n\t\tcase *ast.StarExpr:\n\t\t\texpr = t.X\n\t\tcase *ast.IndexExpr:\n\t\t\texpr = t.X\n\t\tcase *ast.IndexListExpr:\n\t\t\texpr = t.X\n\t\tcase *ast.ParenExpr:\n\t\t\texpr = t.X\n\t\tcase *ast.Ident:\n\t\t\treturn t.Name\n\t\tdefault:\n\t\t\treturn \"\"\n\t\t}\n\t}\n}"
   },
@@ -618,9 +661,9 @@
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
    "line": 382,
-   "doc": "signature prints the declaration without its body or comment.",
+   "doc": "signature imprime a declaração sem o corpo e sem o comentário.",
    "signature": "func signature(d *ast.FuncDecl) string",
-   "code": "func signature(d *ast.FuncDecl) string {\n\theader := *d\n\theader.Body = nil\n\theader.Doc = nil\n\tsig := strings.Join(strings.Fields(printNode(\u0026header)), \" \")\n\tif len(sig) \u003e maxSignatureLen {\n\t\tsig = sig[:maxSignatureLen] + \"…\"\n\t}\n\treturn sig\n}"
+   "code": "func signature(d *ast.FuncDecl) string {\n\theader := *d\n\theader.Body = nil\n\theader.Doc = nil\n\tsig := strings.Join(strings.Fields(printNode(\u0026header)), \" \")\n\t// Corta por runa, não por byte, para não partir um \"ε\" ou \"→\" ao meio.\n\tif runes := []rune(sig); len(runes) \u003e maxSignatureLen {\n\t\tsig = string(runes[:maxSignatureLen]) + \"…\"\n\t}\n\treturn sig\n}"
   },
   {
    "id": "func:cmd/codegraph.splitFrontmatter",
@@ -629,7 +672,7 @@
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/notes.go",
    "line": 159,
-   "doc": "splitFrontmatter separates the YAML block (flat \"key: value\" lines) from the Markdown. A note without front matter is allowed and has no fields.",
+   "doc": "splitFrontmatter separa o bloco YAML (linhas simples \"chave: valor\") do Markdown. Uma nota sem cabeçalho é aceita e fica sem campos.",
    "signature": "func splitFrontmatter(text string) (map[string]string, string, error)",
    "code": "func splitFrontmatter(text string) (map[string]string, string, error) {\n\ttext = strings.ReplaceAll(strings.TrimPrefix(text, \"\\ufeff\"), \"\\r\\n\", \"\\n\")\n\tfields := map[string]string{}\n\tif !strings.HasPrefix(text, frontmatterSep+\"\\n\") {\n\t\treturn fields, text, nil\n\t}\n\tlines := strings.Split(text, \"\\n\")\n\tfor i := 1; i \u003c len(lines); i++ {\n\t\tif strings.TrimRight(lines[i], \" \\t\") == frontmatterSep {\n\t\t\tparseFields(strings.Join(lines[1:i], \"\\n\"), fields)\n\t\t\treturn fields, strings.TrimLeft(strings.Join(lines[i+1:], \"\\n\"), \"\\n\"), nil\n\t\t}\n\t}\n\treturn nil, \"\", errors.New(\"front matter is not closed with ---\")\n}"
   },
@@ -639,8 +682,8 @@
    "kind": "func",
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/notes.go",
-   "line": 187,
-   "doc": "splitTitle takes the first \"# Title\" line as the title and removes it from the body.",
+   "line": 188,
+   "doc": "splitTitle usa a primeira linha \"# Título\" como título e a tira do corpo.",
    "signature": "func splitTitle(fallback, body string) (string, string)",
    "code": "func splitTitle(fallback, body string) (string, string) {\n\tlines := strings.Split(body, \"\\n\")\n\tfor i, line := range lines {\n\t\tif strings.TrimSpace(line) == \"\" {\n\t\t\tcontinue\n\t\t}\n\t\tif title, ok := strings.CutPrefix(line, \"# \"); ok {\n\t\t\trest := strings.Join(lines[i+1:], \"\\n\")\n\t\t\treturn strings.TrimSpace(title), strings.TrimSpace(rest)\n\t\t}\n\t\tbreak\n\t}\n\treturn fallback, strings.TrimSpace(body)\n}"
   },
@@ -670,10 +713,10 @@
    "kind": "func",
    "package": "cmd/wasm",
    "file": "cmd/wasm/main.go",
-   "line": 144,
-   "doc": "consultedCell returns the table cell a step reads: the stack top against the current input token, when the top is a non-terminal with an entry there.",
-   "signature": "func consultedCell(step ll1.Step) *cellRefJSON",
-   "code": "func consultedCell(step ll1.Step) *cellRefJSON {\n\tif len(step.Stack) == 0 || len(step.Input) == 0 {\n\t\treturn nil\n\t}\n\ttop := step.Stack[len(step.Stack)-1]\n\tif !grammar.IsNonTerminal(top) {\n\t\treturn nil\n\t}\n\tif _, ok := table.Production(top, step.Input[0]); !ok {\n\t\treturn nil\n\t}\n\treturn \u0026cellRefJSON{NonTerminal: top, Column: step.Input[0]}\n}"
+   "line": 213,
+   "doc": "consultedCell devolve a célula que o passo lê: o topo da pilha contra o token atual, quando o topo é não terminal e a célula tem produção. A página usa isso para destacar a célula e montar a derivação.",
+   "signature": "func consultedCell(table *ll1.Table, step ll1.Step) *cellRefJSON",
+   "code": "func consultedCell(table *ll1.Table, step ll1.Step) *cellRefJSON {\n\tif len(step.Stack) == 0 || len(step.Input) == 0 {\n\t\treturn nil\n\t}\n\ttop := step.Stack[len(step.Stack)-1]\n\tif !table.Grammar.IsNonTerminal(top) {\n\t\treturn nil\n\t}\n\tif _, ok := table.Production(top, step.Input[0]); !ok {\n\t\treturn nil\n\t}\n\treturn \u0026cellRefJSON{NonTerminal: top, Column: step.Input[0]}\n}"
   },
   {
    "id": "func:cmd/wasm.grammarValue",
@@ -681,9 +724,29 @@
    "kind": "func",
    "package": "cmd/wasm",
    "file": "cmd/wasm/main.go",
-   "line": 99,
-   "signature": "func grammarValue() any",
-   "code": "func grammarValue() any {\n\tout := grammarJSON{\n\t\tStart:        grammar.Start,\n\t\tGrouped:      strings.Split(strings.TrimSpace(grammar.String()), \"\\n\"),\n\t\tTerminals:    grammar.Terminals,\n\t\tNonTerminals: grammar.NonTerminals,\n\t}\n\tfor _, production := range grammar.Productions {\n\t\tout.Productions = append(out.Productions, productionJSON{\n\t\t\tNumber: production.Number,\n\t\t\tHead:   production.Head,\n\t\t\tBody:   production.Body,\n\t\t\tText:   production.String(),\n\t\t})\n\t}\n\treturn toJSON(out)\n}"
+   "line": 163,
+   "signature": "func grammarValue(grammar *ll1.Grammar) any",
+   "code": "func grammarValue(grammar *ll1.Grammar) any {\n\tout := grammarJSON{\n\t\tStart:        grammar.Start,\n\t\tTerminals:    grammar.Terminals,\n\t\tNonTerminals: grammar.NonTerminals,\n\t}\n\tfor _, production := range grammar.Productions {\n\t\tout.Productions = append(out.Productions, productionJSON{\n\t\t\tNumber: production.Number,\n\t\t\tHead:   production.Head,\n\t\t\tBody:   production.Body,\n\t\t\tFirst:  grammar.FirstOfSequence(production.Body),\n\t\t})\n\t}\n\treturn toJSON(out)\n}"
+  },
+  {
+   "id": "func:cmd/wasm.indexPresets",
+   "label": "indexPresets",
+   "kind": "func",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 121,
+   "signature": "func indexPresets(list []loaded) map[string]loaded",
+   "code": "func indexPresets(list []loaded) map[string]loaded {\n\tout := make(map[string]loaded, len(list))\n\tfor _, item := range list {\n\t\tout[item.preset.ID] = item\n\t}\n\treturn out\n}"
+  },
+  {
+   "id": "func:cmd/wasm.loadPresets",
+   "label": "loadPresets",
+   "kind": "func",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 113,
+   "signature": "func loadPresets() []loaded",
+   "code": "func loadPresets() []loaded {\n\tvar out []loaded\n\tfor _, preset := range ll1.Presets() {\n\t\tout = append(out, loaded{preset, ll1.BuildTable(preset.Grammar)})\n\t}\n\treturn out\n}"
   },
   {
    "id": "func:cmd/wasm.main",
@@ -691,9 +754,9 @@
    "kind": "func",
    "package": "cmd/wasm",
    "file": "cmd/wasm/main.go",
-   "line": 170,
+   "line": 239,
    "signature": "func main()",
-   "code": "func main() {\n\tapi := map[string]any{\n\t\t\"grammar\": js.FuncOf(func(js.Value, []js.Value) any { return grammarValue() }),\n\t\t\"sets\":    js.FuncOf(func(js.Value, []js.Value) any { return setsValue() }),\n\t\t\"table\":   js.FuncOf(func(js.Value, []js.Value) any { return tableValue() }),\n\t\t\"parse\": js.FuncOf(func(_ js.Value, args []js.Value) any {\n\t\t\tinput := \"\"\n\t\t\tif len(args) \u003e 0 {\n\t\t\t\tinput = args[0].String()\n\t\t\t}\n\t\t\treturn parseValue(input)\n\t\t}),\n\t\t\"generate\": js.FuncOf(func(js.Value, []js.Value) any {\n\t\t\treturn ll1.Generate(grammar, rng, maxGenerateDepth)\n\t\t}),\n\t\t\"generateInvalid\": js.FuncOf(func(js.Value, []js.Value) any {\n\t\t\treturn ll1.GenerateInvalid(grammar, rng)\n\t\t}),\n\t}\n\tjs.Global().Set(\"ll1\", js.ValueOf(api))\n\tselect {}\n}"
+   "code": "func main() {\n\tapi := map[string]any{\n\t\t\"presets\": js.FuncOf(func(js.Value, []js.Value) any { return presetsValue() }),\n\t\t\"grammar\": js.FuncOf(func(_ js.Value, args []js.Value) any { return grammarValue(selected(args, 0).preset.Grammar) }),\n\t\t\"sets\":    js.FuncOf(func(_ js.Value, args []js.Value) any { return setsValue(selected(args, 0).preset.Grammar) }),\n\t\t\"table\":   js.FuncOf(func(_ js.Value, args []js.Value) any { return tableValue(selected(args, 0).table) }),\n\t\t\"parse\": js.FuncOf(func(_ js.Value, args []js.Value) any {\n\t\t\tinput := \"\"\n\t\t\tif len(args) \u003e 0 {\n\t\t\t\tinput = args[0].String()\n\t\t\t}\n\t\t\treturn parseValue(selected(args, 1).table, input)\n\t\t}),\n\t\t\"generate\": js.FuncOf(func(_ js.Value, args []js.Value) any {\n\t\t\treturn ll1.Generate(selected(args, 0).preset.Grammar, rng, ll1.DefaultMaxDepth)\n\t\t}),\n\t\t\"generateInvalid\": js.FuncOf(func(_ js.Value, args []js.Value) any {\n\t\t\treturn ll1.GenerateInvalid(selected(args, 0).preset.Grammar, rng)\n\t\t}),\n\t}\n\t// select {} mantém o programa vivo: as funções acima só respondem enquanto\n\t// main não termina.\n\tjs.Global().Set(\"ll1\", js.ValueOf(api))\n\tselect {}\n}"
   },
   {
    "id": "func:cmd/wasm.parseValue",
@@ -701,9 +764,30 @@
    "kind": "func",
    "package": "cmd/wasm",
    "file": "cmd/wasm/main.go",
-   "line": 158,
-   "signature": "func parseValue(input string) any",
-   "code": "func parseValue(input string) any {\n\tresult := ll1.Parse(table, input)\n\tout := resultJSON{Accepted: result.Accepted, Message: result.Message, Tokens: []tokenJSON{}, Steps: []stepJSON{}}\n\tfor _, token := range result.Tokens {\n\t\tout.Tokens = append(out.Tokens, tokenJSON{token.Kind, token.Lexeme, token.Pos})\n\t}\n\tfor _, step := range result.Steps {\n\t\tout.Steps = append(out.Steps, stepJSON{step.Number, step.Stack, step.Input, step.Action, consultedCell(step)})\n\t}\n\treturn toJSON(out)\n}"
+   "line": 227,
+   "signature": "func parseValue(table *ll1.Table, input string) any",
+   "code": "func parseValue(table *ll1.Table, input string) any {\n\tresult := ll1.Parse(table, input)\n\tout := resultJSON{Accepted: result.Accepted, Message: result.Message, Tokens: []tokenJSON{}, Steps: []stepJSON{}}\n\tfor _, token := range result.Tokens {\n\t\tout.Tokens = append(out.Tokens, tokenJSON{token.Kind, token.Lexeme, token.Pos})\n\t}\n\tfor _, step := range result.Steps {\n\t\tout.Steps = append(out.Steps, stepJSON{step.Number, step.Stack, step.Input, step.Action, consultedCell(table, step)})\n\t}\n\treturn toJSON(out)\n}"
+  },
+  {
+   "id": "func:cmd/wasm.presetsValue",
+   "label": "presetsValue",
+   "kind": "func",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 139,
+   "signature": "func presetsValue() any",
+   "code": "func presetsValue() any {\n\tout := []presetJSON{}\n\tfor _, item := range presets {\n\t\tp := item.preset\n\t\tout = append(out, presetJSON{\n\t\t\tID: p.ID, Name: p.Name, Description: p.Description, Group: p.Group.Label(),\n\t\t\tIsDefault: p.ID == ll1.DefaultPresetID, Author: p.Author, Source: p.Source, URL: p.URL,\n\t\t\tAdapted: p.Adapted, IsLL1: len(item.table.Conflicts) == 0, Terminals: p.Grammar.Terminals,\n\t\t\tExamples: p.Examples, InvalidExamples: p.InvalidExamples,\n\t\t})\n\t}\n\treturn toJSON(out)\n}"
+  },
+  {
+   "id": "func:cmd/wasm.selected",
+   "label": "selected",
+   "kind": "func",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 130,
+   "doc": "selected acha a gramática pelo id opcional em args[index].",
+   "signature": "func selected(args []js.Value, index int) loaded",
+   "code": "func selected(args []js.Value, index int) loaded {\n\tif len(args) \u003e index \u0026\u0026 args[index].Type() == js.TypeString {\n\t\tif item, ok := presetMap[args[index].String()]; ok {\n\t\t\treturn item\n\t\t}\n\t}\n\treturn presetMap[ll1.DefaultPresetID]\n}"
   },
   {
    "id": "func:cmd/wasm.setsValue",
@@ -711,9 +795,9 @@
    "kind": "func",
    "package": "cmd/wasm",
    "file": "cmd/wasm/main.go",
-   "line": 117,
-   "signature": "func setsValue() any",
-   "code": "func setsValue() any {\n\tfirst, follow := grammar.First(), grammar.Follow()\n\trows := []setsRowJSON{}\n\tfor _, nonTerminal := range grammar.NonTerminals {\n\t\trows = append(rows, setsRowJSON{nonTerminal, first[nonTerminal], follow[nonTerminal]})\n\t}\n\treturn toJSON(rows)\n}"
+   "line": 180,
+   "signature": "func setsValue(grammar *ll1.Grammar) any",
+   "code": "func setsValue(grammar *ll1.Grammar) any {\n\tfirst, follow := grammar.First(), grammar.Follow()\n\trows := []setsRowJSON{}\n\tfor _, nonTerminal := range grammar.NonTerminals {\n\t\trows = append(rows, setsRowJSON{nonTerminal, first[nonTerminal], follow[nonTerminal]})\n\t}\n\treturn toJSON(rows)\n}"
   },
   {
    "id": "func:cmd/wasm.tableValue",
@@ -721,9 +805,9 @@
    "kind": "func",
    "package": "cmd/wasm",
    "file": "cmd/wasm/main.go",
-   "line": 126,
-   "signature": "func tableValue() any",
-   "code": "func tableValue() any {\n\tout := tableJSON{Columns: table.Columns, Conflicts: append([]string{}, table.Conflicts...), Rows: []tableRowJSON{}}\n\tfor _, nonTerminal := range grammar.NonTerminals {\n\t\trow := tableRowJSON{NonTerminal: nonTerminal}\n\t\tfor _, column := range table.Columns {\n\t\t\tcell := tableCellJSON{Column: column}\n\t\t\tif production, ok := table.Production(nonTerminal, column); ok {\n\t\t\t\tcell.Number, cell.Text = production.Number, production.String()\n\t\t\t}\n\t\t\trow.Cells = append(row.Cells, cell)\n\t\t}\n\t\tout.Rows = append(out.Rows, row)\n\t}\n\treturn toJSON(out)\n}"
+   "line": 189,
+   "signature": "func tableValue(table *ll1.Table) any",
+   "code": "func tableValue(table *ll1.Table) any {\n\tgrammar := table.Grammar\n\tout := tableJSON{Columns: table.Columns, Conflicts: append([]string{}, table.Conflicts...), Rows: []tableRowJSON{}}\n\tconflicts := map[[2]string][]int{} // [não terminal, coluna] -\u003e produções em disputa\n\tfor _, conflict := range table.ConflictCells {\n\t\tconflicts[[2]string{conflict.NonTerminal, conflict.Column}] = conflict.Numbers\n\t}\n\tfor _, nonTerminal := range grammar.NonTerminals {\n\t\trow := tableRowJSON{NonTerminal: nonTerminal}\n\t\tfor _, column := range table.Columns {\n\t\t\trow.Cells = append(row.Cells, tableCellJSON{\n\t\t\t\tColumn:    column,\n\t\t\t\tNumber:    table.Cells[nonTerminal][column], // 0 quando a célula está vazia\n\t\t\t\tConflicts: conflicts[[2]string{nonTerminal, column}],\n\t\t\t})\n\t\t}\n\t\tout.Rows = append(out.Rows, row)\n\t}\n\treturn toJSON(out)\n}"
   },
   {
    "id": "func:cmd/wasm.toJSON",
@@ -731,9 +815,10 @@
    "kind": "func",
    "package": "cmd/wasm",
    "file": "cmd/wasm/main.go",
-   "line": 91,
+   "line": 155,
+   "doc": "toJSON codifica o valor. Os tipos acima só têm textos, números e listas, então Marshal não falha; se falhar, é erro do programa e deve aparecer.",
    "signature": "func toJSON(value any) any",
-   "code": "func toJSON(value any) any {\n\tencoded, err := json.Marshal(value)\n\tif err != nil {\n\t\treturn `{\"error\":\"` + err.Error() + `\"}`\n\t}\n\treturn string(encoded)\n}"
+   "code": "func toJSON(value any) any {\n\tencoded, err := json.Marshal(value)\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\treturn string(encoded)\n}"
   },
   {
    "id": "func:ll1.BuildTable",
@@ -741,10 +826,10 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/table.go",
-   "line": 17,
-   "doc": "BuildTable fills the table from FIRST and FOLLOW: production A -\u003e α goes in M[A, a] for every terminal a in FIRST(α), and, when ε is in FIRST(α), in M[A, b] for every b in FOLLOW(A). A cell claimed twice is a conflict; the first production keeps the cell.",
+   "line": 26,
+   "doc": "BuildTable preenche a tabela a partir de FIRST e FOLLOW. Uma célula pedida duas vezes é um conflito; a primeira produção fica com a célula.",
    "signature": "func BuildTable(g *Grammar) *Table",
-   "code": "func BuildTable(g *Grammar) *Table {\n\tt := \u0026Table{\n\t\tGrammar: g,\n\t\tColumns: append(append([]string{}, g.Terminals...), EndMarker),\n\t\tCells:   make(map[string]map[string]int, len(g.NonTerminals)),\n\t}\n\tfor _, nt := range g.NonTerminals {\n\t\tt.Cells[nt] = map[string]int{}\n\t}\n\tfirst := g.firstSets()\n\tfollow := g.followSets(first)\n\tfor _, p := range g.Productions {\n\t\tbodyFirst := g.firstOfSequence(first, p.Body)\n\t\tfor _, column := range t.Columns {\n\t\t\tif bodyFirst[column] || (bodyFirst[Epsilon] \u0026\u0026 follow[p.Head][column]) {\n\t\t\t\tt.place(p, column)\n\t\t\t}\n\t\t}\n\t}\n\treturn t\n}"
+   "code": "func BuildTable(g *Grammar) *Table {\n\tt := \u0026Table{\n\t\tGrammar: g,\n\t\tColumns: append(append([]string{}, g.Terminals...), EndMarker),\n\t\tCells:   make(map[string]map[string]int, len(g.NonTerminals)),\n\t}\n\tfor _, nt := range g.NonTerminals {\n\t\tt.Cells[nt] = map[string]int{}\n\t}\n\tfirst := g.firstSets()\n\tfollow := g.followSets(first)\n\tfor _, p := range g.Productions {\n\t\tbodyFirst := g.firstOfSequence(first, p.Body)\n\t\tfor _, column := range t.Columns {\n\t\t\t// Regra 1 da tabela: para A → α, cada a ∈ FIRST(α) põe A → α em M[A, a].\n\t\t\t// Regra 2 da tabela: se ε ∈ FIRST(α), cada b ∈ FOLLOW(A), inclusive $,\n\t\t\t// põe A → α em M[A, b].\n\t\t\tif bodyFirst[column] || (bodyFirst[Epsilon] \u0026\u0026 follow[p.Head][column]) {\n\t\t\t\tt.place(p, column)\n\t\t\t}\n\t\t}\n\t}\n\treturn t\n}"
   },
   {
    "id": "func:ll1.Default",
@@ -752,8 +837,8 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/grammar.go",
-   "line": 49,
-   "doc": "Default returns the fixed expression grammar of the assignment.",
+   "line": 50,
+   "doc": "Default devolve a gramática fixa das expressões, a do trabalho.",
    "signature": "func Default() *Grammar",
    "code": "func Default() *Grammar {\n\tbodies := []struct {\n\t\thead string\n\t\tbody string\n\t}{\n\t\t{\"E\", \"T E'\"},\n\t\t{\"E'\", \"+ T E'\"},\n\t\t{\"E'\", \"- T E'\"},\n\t\t{\"E'\", Epsilon},\n\t\t{\"T\", \"F T'\"},\n\t\t{\"T'\", \"* F T'\"},\n\t\t{\"T'\", \"/ F T'\"},\n\t\t{\"T'\", Epsilon},\n\t\t{\"F\", \"( E )\"},\n\t\t{\"F\", TerminalID},\n\t\t{\"F\", TerminalNum},\n\t}\n\tg := \u0026Grammar{\n\t\tStart:        \"E\",\n\t\tNonTerminals: []string{\"E\", \"E'\", \"T\", \"T'\", \"F\"},\n\t\tTerminals:    []string{TerminalID, TerminalNum, \"+\", \"-\", \"*\", \"/\", \"(\", \")\"},\n\t}\n\tfor i, b := range bodies {\n\t\tg.Productions = append(g.Productions, Production{\n\t\t\tNumber: i + 1,\n\t\t\tHead:   b.head,\n\t\t\tBody:   strings.Fields(b.body),\n\t\t})\n\t}\n\treturn g\n}"
   },
@@ -763,8 +848,8 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/generator.go",
-   "line": 26,
-   "doc": "Generate builds a random valid sentence by a leftmost derivation from the start symbol. Below maxDepth every production is equally likely; from maxDepth on, only the productions that finish the derivation fastest are chosen. Tokens are joined by spaces: \"x + 3 * ( y )\".",
+   "line": 29,
+   "doc": "Generate monta uma sentença válida aleatória por derivação mais à esquerda a partir do símbolo inicial. Abaixo de maxDepth toda produção tem a mesma chance; a partir dele só entram as que terminam a derivação mais rápido. Os tokens saem separados por espaço: \"x + 3 * ( y )\". Supõe que todo não terminal derive alguma sentença (vale para todas as gramáticas prontas).",
    "signature": "func Generate(g *Grammar, rng *rand.Rand, maxDepth int) string",
    "code": "func Generate(g *Grammar, rng *rand.Rand, maxDepth int) string {\n\theights := g.productionHeights()\n\tvar lexemes []string\n\tvar expand func(symbol string, depth int)\n\texpand = func(symbol string, depth int) {\n\t\tif !g.IsNonTerminal(symbol) {\n\t\t\tlexemes = append(lexemes, lexemeFor(symbol, rng))\n\t\t\treturn\n\t\t}\n\t\tp := chooseProduction(g.ProductionsOf(symbol), heights, rng, depth \u003e= maxDepth)\n\t\tif p.IsEmpty() {\n\t\t\treturn\n\t\t}\n\t\tfor _, child := range p.Body {\n\t\t\texpand(child, depth+1)\n\t\t}\n\t}\n\texpand(g.Start, 0)\n\treturn strings.Join(lexemes, \" \")\n}"
   },
@@ -774,10 +859,10 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/generator.go",
-   "line": 50,
-   "doc": "GenerateInvalid mutates a valid sentence (drops a token, duplicates an operator, adds an unbalanced parenthesis or inserts an illegal character) and retries until the parser rejects the result.",
+   "line": 53,
+   "doc": "GenerateInvalid estraga uma sentença válida (tira um token, duplica um operador, põe um parêntese sem par ou um caractere ilegal) e tenta de novo até o analisador rejeitar o resultado.",
    "signature": "func GenerateInvalid(g *Grammar, rng *rand.Rand) string",
-   "code": "func GenerateInvalid(g *Grammar, rng *rand.Rand) string {\n\ttable := BuildTable(g)\n\tfor {\n\t\tlexemes := strings.Fields(Generate(g, rng, invalidBaseDepth))\n\t\tcandidate := strings.Join(mutate(lexemes, rng), \" \")\n\t\tif !Parse(table, candidate).Accepted {\n\t\t\treturn candidate\n\t\t}\n\t}\n}"
+   "code": "func GenerateInvalid(g *Grammar, rng *rand.Rand) string {\n\ttable := BuildTable(g)\n\tfor {\n\t\tlexemes := strings.Fields(Generate(g, rng, DefaultMaxDepth))\n\t\tcandidate := strings.Join(mutate(g, lexemes, rng), \" \")\n\t\t// Tirar o único token de \"x\" deixa a entrada vazia: é rejeitada, mas\n\t\t// não mostra nada na tela, então tenta de novo.\n\t\tif strings.TrimSpace(candidate) == \"\" {\n\t\t\tcontinue\n\t\t}\n\t\tif !Parse(table, candidate).Accepted {\n\t\t\treturn candidate\n\t\t}\n\t}\n}"
   },
   {
    "id": "func:ll1.Grammar.First",
@@ -785,8 +870,8 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/sets.go",
-   "line": 20,
-   "doc": "First computes FIRST of every non-terminal with the fixed-point algorithm. Each set is ordered like Terminals, with ε last when present.",
+   "line": 25,
+   "doc": "First calcula o FIRST de cada não terminal pelo método do ponto fixo. Cada conjunto sai na ordem de Terminals, com ε no fim quando presente.",
    "signature": "func (g *Grammar) First() map[string][]string",
    "code": "func (g *Grammar) First() map[string][]string {\n\tfirst := g.firstSets()\n\tresult := make(map[string][]string, len(first))\n\tfor nt, set := range first {\n\t\tresult[nt] = g.ordered(set, Epsilon)\n\t}\n\treturn result\n}"
   },
@@ -796,8 +881,8 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/sets.go",
-   "line": 31,
-   "doc": "FirstOfSequence returns FIRST of a sequence of symbols, ordered like Terminals with ε last. An empty sequence (or just ε) gives {ε}.",
+   "line": 36,
+   "doc": "FirstOfSequence devolve o FIRST de uma sequência de símbolos, na ordem de Terminals com ε no fim. Uma sequência vazia (ou só ε) dá {ε}.",
    "signature": "func (g *Grammar) FirstOfSequence(seq []string) []string",
    "code": "func (g *Grammar) FirstOfSequence(seq []string) []string {\n\treturn g.ordered(g.firstOfSequence(g.firstSets(), seq), Epsilon)\n}"
   },
@@ -807,8 +892,8 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/sets.go",
-   "line": 37,
-   "doc": "Follow computes FOLLOW of every non-terminal with the fixed-point algorithm. Each set is ordered like Terminals, with $ last when present.",
+   "line": 42,
+   "doc": "Follow calcula o FOLLOW de cada não terminal pelo método do ponto fixo. Cada conjunto sai na ordem de Terminals, com $ no fim quando presente.",
    "signature": "func (g *Grammar) Follow() map[string][]string",
    "code": "func (g *Grammar) Follow() map[string][]string {\n\tfollow := g.followSets(g.firstSets())\n\tresult := make(map[string][]string, len(follow))\n\tfor nt, set := range follow {\n\t\tresult[nt] = g.ordered(set, EndMarker)\n\t}\n\treturn result\n}"
   },
@@ -818,8 +903,8 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/grammar.go",
-   "line": 87,
-   "doc": "IsNonTerminal reports whether s is one of the grammar's non-terminals.",
+   "line": 88,
+   "doc": "IsNonTerminal diz se s é um não terminal da gramática.",
    "signature": "func (g *Grammar) IsNonTerminal(s string) bool",
    "code": "func (g *Grammar) IsNonTerminal(s string) bool {\n\treturn contains(g.NonTerminals, s)\n}"
   },
@@ -829,8 +914,8 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/grammar.go",
-   "line": 82,
-   "doc": "IsTerminal reports whether s is one of the grammar's terminals.",
+   "line": 83,
+   "doc": "IsTerminal diz se s é um terminal da gramática.",
    "signature": "func (g *Grammar) IsTerminal(s string) bool",
    "code": "func (g *Grammar) IsTerminal(s string) bool {\n\treturn contains(g.Terminals, s)\n}"
   },
@@ -840,8 +925,8 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/grammar.go",
-   "line": 92,
-   "doc": "ProductionsOf returns the productions whose head is nonTerminal, in order.",
+   "line": 93,
+   "doc": "ProductionsOf devolve, em ordem, as produções cuja cabeça é nonTerminal.",
    "signature": "func (g *Grammar) ProductionsOf(nonTerminal string) []Production",
    "code": "func (g *Grammar) ProductionsOf(nonTerminal string) []Production {\n\tvar result []Production\n\tfor _, p := range g.Productions {\n\t\tif p.Head == nonTerminal {\n\t\t\tresult = append(result, p)\n\t\t}\n\t}\n\treturn result\n}"
   },
@@ -851,8 +936,8 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/grammar.go",
-   "line": 104,
-   "doc": "String prints one line per non-terminal with alternatives grouped: \"E' -\u003e + T E' | - T E' | ε\".",
+   "line": 105,
+   "doc": "String imprime uma linha por não terminal, com as alternativas juntas: \"E' -\u003e + T E' | - T E' | ε\".",
    "signature": "func (g *Grammar) String() string",
    "code": "func (g *Grammar) String() string {\n\tvar sb strings.Builder\n\tfor _, nt := range g.NonTerminals {\n\t\tvar alternatives []string\n\t\tfor _, p := range g.ProductionsOf(nt) {\n\t\t\talternatives = append(alternatives, strings.Join(p.Body, \" \"))\n\t\t}\n\t\tsb.WriteString(nt)\n\t\tsb.WriteString(Arrow)\n\t\tsb.WriteString(strings.Join(alternatives, \" | \"))\n\t\tsb.WriteString(\"\\n\")\n\t}\n\treturn sb.String()\n}"
   },
@@ -862,10 +947,10 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/sets.go",
-   "line": 64,
-   "doc": "firstOfSequence uses the current (possibly partial) FIRST sets.",
+   "line": 72,
+   "doc": "firstOfSequence usa os conjuntos FIRST atuais, talvez ainda parciais.",
    "signature": "func (g *Grammar) firstOfSequence(first map[string]symbolSet, seq []string) symbolSet",
-   "code": "func (g *Grammar) firstOfSequence(first map[string]symbolSet, seq []string) symbolSet {\n\tresult := symbolSet{}\n\tfor _, symbol := range seq {\n\t\tif symbol == Epsilon {\n\t\t\tcontinue\n\t\t}\n\t\tif !g.IsNonTerminal(symbol) {\n\t\t\tresult[symbol] = true\n\t\t\treturn result\n\t\t}\n\t\tresult.addAll(first[symbol], Epsilon)\n\t\tif !first[symbol][Epsilon] {\n\t\t\treturn result\n\t\t}\n\t}\n\t// Every symbol can vanish (or the sequence is empty).\n\tresult[Epsilon] = true\n\treturn result\n}"
+   "code": "func (g *Grammar) firstOfSequence(first map[string]symbolSet, seq []string) symbolSet {\n\tresult := symbolSet{}\n\tfor _, symbol := range seq {\n\t\tif symbol == Epsilon {\n\t\t\tcontinue\n\t\t}\n\t\t// FIRST de um terminal é ele mesmo, e a sequência começa por ele.\n\t\tif !g.IsNonTerminal(symbol) {\n\t\t\tresult[symbol] = true\n\t\t\treturn result\n\t\t}\n\t\t// Soma FIRST(Xi) sem ε; só passa para Xi+1 se Xi deriva ε.\n\t\tresult.addAll(first[symbol], Epsilon)\n\t\tif !first[symbol][Epsilon] {\n\t\t\treturn result\n\t\t}\n\t}\n\t// Todos os Xi derivam ε (ou o corpo é ε), então ε ∈ FIRST.\n\tresult[Epsilon] = true\n\treturn result\n}"
   },
   {
    "id": "func:ll1.Grammar.firstSets",
@@ -873,10 +958,10 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/sets.go",
-   "line": 47,
-   "doc": "firstSets repeats the FIRST rules until no set changes.",
+   "line": 52,
+   "doc": "firstSets aplica as regras do FIRST até nenhum conjunto mudar.",
    "signature": "func (g *Grammar) firstSets() map[string]symbolSet",
-   "code": "func (g *Grammar) firstSets() map[string]symbolSet {\n\tfirst := make(map[string]symbolSet, len(g.NonTerminals))\n\tfor _, nt := range g.NonTerminals {\n\t\tfirst[nt] = symbolSet{}\n\t}\n\tfor changed := true; changed; {\n\t\tchanged = false\n\t\tfor _, p := range g.Productions {\n\t\t\tif first[p.Head].addAll(g.firstOfSequence(first, p.Body), \"\") {\n\t\t\t\tchanged = true\n\t\t\t}\n\t\t}\n\t}\n\treturn first\n}"
+   "code": "func (g *Grammar) firstSets() map[string]symbolSet {\n\tfirst := make(map[string]symbolSet, len(g.NonTerminals))\n\tfor _, nt := range g.NonTerminals {\n\t\tfirst[nt] = symbolSet{}\n\t}\n\t// Ponto fixo: um FIRST depende de outros ainda incompletos, então repete\n\t// as regras até nenhum conjunto crescer.\n\tfor changed := true; changed; {\n\t\tchanged = false\n\t\tfor _, p := range g.Productions {\n\t\t\t// Para A → X1...Xn, FIRST(A) recebe FIRST(X1...Xn).\n\t\t\tif first[p.Head].addAll(g.firstOfSequence(first, p.Body), noSkip) {\n\t\t\t\tchanged = true\n\t\t\t}\n\t\t}\n\t}\n\treturn first\n}"
   },
   {
    "id": "func:ll1.Grammar.followSets",
@@ -884,10 +969,21 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/sets.go",
-   "line": 85,
-   "doc": "followSets repeats the FOLLOW rules until no set changes.",
+   "line": 95,
+   "doc": "followSets aplica as regras do FOLLOW até nenhum conjunto mudar.",
    "signature": "func (g *Grammar) followSets(first map[string]symbolSet) map[string]symbolSet",
-   "code": "func (g *Grammar) followSets(first map[string]symbolSet) map[string]symbolSet {\n\tfollow := make(map[string]symbolSet, len(g.NonTerminals))\n\tfor _, nt := range g.NonTerminals {\n\t\tfollow[nt] = symbolSet{}\n\t}\n\tfollow[g.Start][EndMarker] = true\n\tfor changed := true; changed; {\n\t\tchanged = false\n\t\tfor _, p := range g.Productions {\n\t\t\tfor i, symbol := range p.Body {\n\t\t\t\tif !g.IsNonTerminal(symbol) {\n\t\t\t\t\tcontinue\n\t\t\t\t}\n\t\t\t\trest := g.firstOfSequence(first, p.Body[i+1:])\n\t\t\t\tif follow[symbol].addAll(rest, Epsilon) {\n\t\t\t\t\tchanged = true\n\t\t\t\t}\n\t\t\t\tif rest[Epsilon] \u0026\u0026 follow[symbol].addAll(follow[p.Head], \"\") {\n\t\t\t\t\tchanged = true\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n\treturn follow\n}"
+   "code": "func (g *Grammar) followSets(first map[string]symbolSet) map[string]symbolSet {\n\tfollow := make(map[string]symbolSet, len(g.NonTerminals))\n\tfor _, nt := range g.NonTerminals {\n\t\tfollow[nt] = symbolSet{}\n\t}\n\t// Regra 1 do FOLLOW: $ ∈ FOLLOW(S), S o símbolo inicial.\n\tfollow[g.Start][EndMarker] = true\n\t// Ponto fixo: a regra 3 copia FOLLOW de um não terminal para outro, então\n\t// repete até nada mudar.\n\tfor changed := true; changed; {\n\t\tchanged = false\n\t\tfor _, p := range g.Productions {\n\t\t\tfor i, symbol := range p.Body {\n\t\t\t\tif !g.IsNonTerminal(symbol) {\n\t\t\t\t\tcontinue\n\t\t\t\t}\n\t\t\t\t// Regra 2 do FOLLOW: A → αBβ, FIRST(β) − {ε} entra em FOLLOW(B).\n\t\t\t\trest := g.firstOfSequence(first, p.Body[i+1:])\n\t\t\t\tif follow[symbol].addAll(rest, Epsilon) {\n\t\t\t\t\tchanged = true\n\t\t\t\t}\n\t\t\t\t// Regra 3 do FOLLOW: A → αB, ou A → αBβ com ε ∈ FIRST(β),\n\t\t\t\t// FOLLOW(A) entra em FOLLOW(B).\n\t\t\t\tif rest[Epsilon] \u0026\u0026 follow[symbol].addAll(follow[p.Head], noSkip) {\n\t\t\t\t\tchanged = true\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n\treturn follow\n}"
+  },
+  {
+   "id": "func:ll1.Grammar.isKeyword",
+   "label": "Grammar.isKeyword",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/lexer.go",
+   "line": 78,
+   "doc": "isKeyword diz se word é, sozinha, um terminal de g. Os nomes \"id\" e \"num\" não são palavras-chave: digitados como palavras, são identificadores.",
+   "signature": "func (g *Grammar) isKeyword(word string) bool",
+   "code": "func (g *Grammar) isKeyword(word string) bool {\n\treturn word != TerminalID \u0026\u0026 word != TerminalNum \u0026\u0026 g.IsTerminal(word)\n}"
   },
   {
    "id": "func:ll1.Grammar.ordered",
@@ -895,8 +991,8 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/sets.go",
-   "line": 112,
-   "doc": "ordered lists the set in Terminals order, then the extra symbol if present.",
+   "line": 129,
+   "doc": "ordered lista o conjunto na ordem de Terminals e põe extra no fim, se estiver nele, para a tela mostrar sempre a mesma ordem.",
    "signature": "func (g *Grammar) ordered(set symbolSet, extra string) []string",
    "code": "func (g *Grammar) ordered(set symbolSet, extra string) []string {\n\tresult := []string{}\n\tfor _, t := range g.Terminals {\n\t\tif set[t] {\n\t\t\tresult = append(result, t)\n\t\t}\n\t}\n\tif set[extra] {\n\t\tresult = append(result, extra)\n\t}\n\treturn result\n}"
   },
@@ -906,10 +1002,21 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/generator.go",
-   "line": 134,
-   "doc": "productionHeights gives, per production number, the height of the shortest derivation tree that starts with it (fixed-point computation).",
+   "line": 161,
+   "doc": "productionHeights dá, por número de produção, a altura da menor árvore de derivação que começa por ela. Ponto fixo: a altura de um não terminal só cai quando a de algum símbolo do corpo cai, então repete até parar.",
    "signature": "func (g *Grammar) productionHeights() map[int]int",
    "code": "func (g *Grammar) productionHeights() map[int]int {\n\tsymbolHeight := map[string]int{}\n\tfor _, nt := range g.NonTerminals {\n\t\tsymbolHeight[nt] = math.MaxInt\n\t}\n\theightOf := func(p Production) int {\n\t\theight := 0\n\t\tfor _, symbol := range p.Body {\n\t\t\tif h, isNonTerminal := symbolHeight[symbol]; isNonTerminal {\n\t\t\t\tif h == math.MaxInt {\n\t\t\t\t\treturn math.MaxInt\n\t\t\t\t}\n\t\t\t\theight = max(height, h)\n\t\t\t}\n\t\t}\n\t\treturn height + 1\n\t}\n\tfor changed := true; changed; {\n\t\tchanged = false\n\t\tfor _, p := range g.Productions {\n\t\t\tif h := heightOf(p); h \u003c symbolHeight[p.Head] {\n\t\t\t\tsymbolHeight[p.Head] = h\n\t\t\t\tchanged = true\n\t\t\t}\n\t\t}\n\t}\n\theights := make(map[int]int, len(g.Productions))\n\tfor _, p := range g.Productions {\n\t\theights[p.Number] = heightOf(p)\n\t}\n\treturn heights\n}"
+  },
+  {
+   "id": "func:ll1.Grammar.punctuation",
+   "label": "Grammar.punctuation",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/lexer.go",
+   "line": 84,
+   "doc": "punctuation lista os terminais de um caractere de g que não são letra nem dígito, na ordem de Terminals: \"+ - * / ( )\" na gramática do trabalho.",
+   "signature": "func (g *Grammar) punctuation() []string",
+   "code": "func (g *Grammar) punctuation() []string {\n\tvar result []string\n\tfor _, terminal := range g.Terminals {\n\t\trunes := []rune(terminal)\n\t\tif len(runes) == 1 \u0026\u0026 !isLetter(runes[0]) \u0026\u0026 !isDigit(runes[0]) {\n\t\t\tresult = append(result, terminal)\n\t\t}\n\t}\n\treturn result\n}"
   },
   {
    "id": "func:ll1.LexicalError.Detail",
@@ -917,8 +1024,8 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/lexer.go",
-   "line": 23,
-   "doc": "Detail describes the bad character and where it is.",
+   "line": 24,
+   "doc": "Detail descreve o caractere inválido e onde ele está.",
    "signature": "func (e *LexicalError) Detail() string",
    "code": "func (e *LexicalError) Detail() string {\n\treturn fmt.Sprintf(\"caractere '%c' inválido na posição %d\", e.Char, e.Pos)\n}"
   },
@@ -928,7 +1035,8 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/lexer.go",
-   "line": 18,
+   "line": 19,
+   "doc": "Error devolve a mensagem completa, com o prefixo \"erro léxico\".",
    "signature": "func (e *LexicalError) Error() string",
    "code": "func (e *LexicalError) Error() string {\n\treturn \"erro léxico: \" + e.Detail()\n}"
   },
@@ -938,10 +1046,43 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/parser.go",
-   "line": 31,
-   "doc": "Parse runs the non-recursive predictive parser over input, recording a Step for every action, including the final accept or error.",
+   "line": 35,
+   "doc": "Parse roda o analisador preditivo não recursivo sobre a entrada, com o léxico da gramática da tabela, e grava um Step para cada ação, inclusive o aceite ou o erro final. Uma tabela com conflitos é recusada com um único passo de erro, em vez de adivinhar uma produção.",
    "signature": "func Parse(t *Table, input string) Result",
-   "code": "func Parse(t *Table, input string) Result {\n\tstart := []string{EndMarker, t.Grammar.Start}\n\ttokens, err := Tokenize(input)\n\tif err != nil {\n\t\t// Tokenize only fails with a *LexicalError.\n\t\treturn lexicalFailure(start, input, err.(*LexicalError))\n\t}\n\n\tresult := Result{Tokens: tokens}\n\tstack := start\n\tposition := 0\n\tfor {\n\t\ttop := stack[len(stack)-1]\n\t\tcurrent := tokens[position]\n\t\tstep := Step{\n\t\t\tNumber: len(result.Steps) + 1,\n\t\t\tStack:  append([]string{}, stack...),\n\t\t\tInput:  kinds(tokens[position:]),\n\t\t}\n\n\t\tswitch {\n\t\tcase top == EndMarker \u0026\u0026 current.Kind == EndMarker:\n\t\t\tstep.Action = ActionAccept\n\t\t\tresult.Steps = append(result.Steps, step)\n\t\t\tresult.Accepted = true\n\t\t\tresult.Message = MessageAccepted\n\t\t\treturn result\n\n\t\tcase !t.Grammar.IsNonTerminal(top):\n\t\t\tif top != current.Kind {\n\t\t\t\treason := fmt.Sprintf(\"%s, esperado %s\", unexpected(current), describeSymbol(top))\n\t\t\t\treturn reject(result, step, reason)\n\t\t\t}\n\t\t\tstep.Action = matchAction(current)\n\t\t\tstack = stack[:len(stack)-1]\n\t\t\tposition++\n\n\t\tdefault:\n\t\t\tp, ok := t.Production(top, current.Kind)\n\t\t\tif !ok {\n// … (+14 linhas)"
+   "code": "func Parse(t *Table, input string) Result {\n\tstart := []string{EndMarker, t.Grammar.Start}\n\tif len(t.Conflicts) \u003e 0 {\n\t\treturn refuseConflicts(t.Grammar, start, input)\n\t}\n\ttokens, err := TokenizeFor(t.Grammar, input)\n\tif err != nil {\n\t\t// TokenizeFor só falha com *LexicalError.\n\t\treturn lexicalFailure(t.Grammar, start, input, err.(*LexicalError))\n\t}\n\n\t// Configuração inicial: pilha $ S, com o topo à direita, e entrada w$.\n\tresult := Result{Tokens: tokens}\n\tstack := start\n\tposition := 0\n\t// X é o topo da pilha e a é o token atual; cada volta faz uma ação.\n\tfor {\n\t\ttop := stack[len(stack)-1]\n\t\tcurrent := tokens[position]\n\t\tstep := Step{\n\t\t\tNumber: len(result.Steps) + 1,\n\t\t\tStack:  append([]string{}, stack...),\n\t\t\tInput:  kinds(tokens[position:]),\n\t\t}\n\n\t\tswitch {\n\t\t// X = $ e a = $: pilha e entrada terminaram juntas, a sentença é aceita.\n\t\tcase top == EndMarker \u0026\u0026 current.Kind == EndMarker:\n\t\t\tstep.Action = ActionAccept\n\t\t\tresult.Steps = append(result.Steps, step)\n\t\t\tresult.Accepted = true\n\t\t\tresult.Message = MessageAccepted\n\t\t\treturn result\n\n\t\t// X terminal (ou $): tem de ser igual ao token atual; casou, desempilha X\n\t\t// e avança a entrada.\n\t\tcase !t.Grammar.IsNonTerminal(top):\n\t\t\tif top != current.Kind {\n\t\t\t\treason := fmt.Sprintf(\"%s, esperado %s\", unexpected(current), describeSymbol(top))\n\t\t\t\treturn reject(result, step, reason)\n// … (+25 linhas)"
+  },
+  {
+   "id": "func:ll1.PresetByID",
+   "label": "PresetByID",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/presets.go",
+   "line": 401,
+   "doc": "PresetByID acha uma gramática pronta pelo id.",
+   "signature": "func PresetByID(id string) (Preset, bool)",
+   "code": "func PresetByID(id string) (Preset, bool) {\n\tfor _, p := range Presets() {\n\t\tif p.ID == id {\n\t\t\treturn p, true\n\t\t}\n\t}\n\treturn Preset{}, false\n}"
+  },
+  {
+   "id": "func:ll1.PresetGroup.Label",
+   "label": "PresetGroup.Label",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/presets.go",
+   "line": 16,
+   "doc": "Label é o título do grupo mostrado na tela.",
+   "signature": "func (g PresetGroup) Label() string",
+   "code": "func (g PresetGroup) Label() string {\n\tswitch g {\n\tcase GroupAssignment:\n\t\treturn \"Trabalho\"\n\tcase GroupExamples:\n\t\treturn \"Exemplos\"\n\tdefault:\n\t\treturn \"Da literatura e da web\"\n\t}\n}"
+  },
+  {
+   "id": "func:ll1.Presets",
+   "label": "Presets",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/presets.go",
+   "line": 49,
+   "doc": "Presets lista todas as gramáticas prontas, a do trabalho primeiro. Cada chamada monta gramáticas novas, então quem chama pode guardá-las ou mudá-las.",
+   "signature": "func Presets() []Preset",
+   "code": "func Presets() []Preset {\n\treturn []Preset{\n\t\t{\n\t\t\tID:              DefaultPresetID,\n\t\t\tName:            \"Expressões aritméticas (gramática do trabalho)\",\n\t\t\tDescription:     \"A gramática do trabalho: expressões com identificadores, números, + - * / e parênteses, já fatorada e sem recursão à esquerda.\",\n\t\t\tGroup:           GroupAssignment,\n\t\t\tGrammar:         Default(),\n\t\t\tExamples:        []string{\"a+b*c\", \"(x+1)*y\"},\n\t\t\tInvalidExamples: []string{\"a+\", \"2 $ 3\"},\n\t\t},\n\t\t{\n\t\t\tID:          \"booleanas\",\n\t\t\tName:        \"Expressões booleanas\",\n\t\t\tDescription: \"Expressões com or, and e not, constantes true e false, identificadores e parênteses. Mesma ideia da gramática do trabalho: and tem precedência sobre or.\",\n\t\t\tGroup:       GroupExamples,\n\t\t\tGrammar: grammarFrom(`\n\t\t\t\tB  -\u003e T B'\n\t\t\t\tB' -\u003e or T B' | ε\n\t\t\t\tT  -\u003e F T'\n\t\t\t\tT' -\u003e and F T' | ε\n\t\t\t\tF  -\u003e not F | ( B ) | true | false | id`),\n\t\t\tExamples:        []string{\"a and not b or true\", \"not ( x or y ) and false\", \"true\"},\n\t\t\tInvalidExamples: []string{\"a and or b\", \"( a or b\"},\n\t\t},\n\t\t{\n\t\t\tID:          \"declaracoes\",\n\t\t\tName:        \"Declarações de variáveis\",\n\t\t\tDescription: \"Uma declaração no estilo C: um tipo (int, float ou char), uma lista de nomes separados por vírgula e o ponto e vírgula no fim.\",\n\t\t\tGroup:       GroupExamples,\n\t\t\tGrammar: grammarFrom(`\n\t\t\t\tD  -\u003e T L ;\n\t\t\t\tT  -\u003e int | float | char\n\t\t\t\tL  -\u003e id L'\n\t\t\t\tL' -\u003e , id L' | ε`),\n\t\t\tExamples:        []string{\"int a, b, c;\", \"float total;\"},\n\t\t\tInvalidExamples: []string{\"int a b;\", \"float a, b\"},\n\t\t},\n\t\t{\n\t\t\tID:          \"listas\",\n// … (+310 linhas)"
   },
   {
    "id": "func:ll1.Production.IsEmpty",
@@ -949,8 +1090,8 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/grammar.go",
-   "line": 31,
-   "doc": "IsEmpty reports whether the production derives the empty string directly.",
+   "line": 32,
+   "doc": "IsEmpty diz se a produção deriva a cadeia vazia diretamente (A -\u003e ε).",
    "signature": "func (p Production) IsEmpty() bool",
    "code": "func (p Production) IsEmpty() bool {\n\treturn len(p.Body) == 1 \u0026\u0026 p.Body[0] == Epsilon\n}"
   },
@@ -960,8 +1101,8 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/grammar.go",
-   "line": 36,
-   "doc": "String prints the production as \"E' -\u003e + T E'\".",
+   "line": 37,
+   "doc": "String imprime a produção como \"E' -\u003e + T E'\".",
    "signature": "func (p Production) String() string",
    "code": "func (p Production) String() string {\n\treturn p.Head + Arrow + strings.Join(p.Body, \" \")\n}"
   },
@@ -971,10 +1112,10 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/table.go",
-   "line": 50,
-   "doc": "Production returns the production in M[nonTerminal, column], if any.",
+   "line": 81,
+   "doc": "Production devolve a produção em M[nonTerminal, column], se houver.",
    "signature": "func (t *Table) Production(nonTerminal, column string) (Production, bool)",
-   "code": "func (t *Table) Production(nonTerminal, column string) (Production, bool) {\n\tnumber, ok := t.Cells[nonTerminal][column]\n\tif !ok {\n\t\treturn Production{}, false\n\t}\n\tfor _, p := range t.Grammar.Productions {\n\t\tif p.Number == number {\n\t\t\treturn p, true\n\t\t}\n\t}\n\treturn Production{}, false\n}"
+   "code": "func (t *Table) Production(nonTerminal, column string) (Production, bool) {\n\tnumber, ok := t.Cells[nonTerminal][column]\n\tif !ok {\n\t\treturn Production{}, false\n\t}\n\t// Os números começam em 1 e seguem a ordem de Productions.\n\treturn t.Grammar.Productions[number-1], true\n}"
   },
   {
    "id": "func:ll1.Table.place",
@@ -982,9 +1123,21 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/table.go",
-   "line": 39,
+   "line": 53,
+   "doc": "place escreve a produção na célula. Célula já ocupada quer dizer que a gramática não é LL(1): a primeira produção fica e o conflito é anotado.",
    "signature": "func (t *Table) place(p Production, column string)",
-   "code": "func (t *Table) place(p Production, column string) {\n\trow := t.Cells[p.Head]\n\tif existing, taken := row[column]; taken {\n\t\tt.Conflicts = append(t.Conflicts, fmt.Sprintf(\n\t\t\t\"Conflito em M[%s, %s]: produções %d e %d\", p.Head, column, existing, p.Number))\n\t\treturn\n\t}\n\trow[column] = p.Number\n}"
+   "code": "func (t *Table) place(p Production, column string) {\n\trow := t.Cells[p.Head]\n\tif existing, taken := row[column]; taken {\n\t\tt.Conflicts = append(t.Conflicts, fmt.Sprintf(\n\t\t\t\"Conflito em M[%s, %s]: produções %d e %d\", p.Head, column, existing, p.Number))\n\t\tt.recordConflict(p, column, existing)\n\t\treturn\n\t}\n\trow[column] = p.Number\n}"
+  },
+  {
+   "id": "func:ll1.Table.recordConflict",
+   "label": "Table.recordConflict",
+   "kind": "method",
+   "package": "ll1",
+   "file": "ll1/table.go",
+   "line": 66,
+   "doc": "recordConflict junta numa só entrada todas as produções que disputam a mesma célula, para a tela mostrar o choque inteiro.",
+   "signature": "func (t *Table) recordConflict(p Production, column string, existing int)",
+   "code": "func (t *Table) recordConflict(p Production, column string, existing int) {\n\tfor i, cell := range t.ConflictCells {\n\t\tif cell.NonTerminal == p.Head \u0026\u0026 cell.Column == column {\n\t\t\tt.ConflictCells[i].Numbers = append(cell.Numbers, p.Number)\n\t\t\treturn\n\t\t}\n\t}\n\tt.ConflictCells = append(t.ConflictCells, ConflictCell{\n\t\tNonTerminal: p.Head,\n\t\tColumn:      column,\n\t\tNumbers:     []int{existing, p.Number},\n\t})\n}"
   },
   {
    "id": "func:ll1.Tokenize",
@@ -992,10 +1145,21 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/lexer.go",
-   "line": 33,
-   "doc": "Tokenize splits the input into tokens. Identifiers [A-Za-z_][A-Za-z0-9_]* become \"id\", digit runs become \"num\", spaces are skipped and any other character is a *LexicalError. On success the last token is always \"$\".",
+   "line": 30,
+   "doc": "Tokenize separa a entrada com o léxico da gramática do trabalho (Default); veja TokenizeFor.",
    "signature": "func Tokenize(input string) ([]Token, error)",
-   "code": "func Tokenize(input string) ([]Token, error) {\n\trunes := []rune(input)\n\tvar tokens []Token\n\tfor i := 0; i \u003c len(runes); {\n\t\tr := runes[i]\n\t\tstart := i\n\t\tswitch {\n\t\tcase isSpace(r):\n\t\t\ti++\n\t\t\tcontinue\n\t\tcase isLetter(r):\n\t\t\tfor i \u003c len(runes) \u0026\u0026 (isLetter(runes[i]) || isDigit(runes[i])) {\n\t\t\t\ti++\n\t\t\t}\n\t\t\ttokens = append(tokens, Token{Kind: TerminalID, Lexeme: string(runes[start:i]), Pos: start + 1})\n\t\tcase isDigit(r):\n\t\t\tfor i \u003c len(runes) \u0026\u0026 isDigit(runes[i]) {\n\t\t\t\ti++\n\t\t\t}\n\t\t\ttokens = append(tokens, Token{Kind: TerminalNum, Lexeme: string(runes[start:i]), Pos: start + 1})\n\t\tcase isOperator(r):\n\t\t\ti++\n\t\t\ttokens = append(tokens, Token{Kind: string(r), Lexeme: string(r), Pos: start + 1})\n\t\tdefault:\n\t\t\treturn nil, \u0026LexicalError{Char: r, Pos: start + 1}\n\t\t}\n\t}\n\ttokens = append(tokens, Token{Kind: EndMarker, Lexeme: EndMarker, Pos: len(runes) + 1})\n\treturn tokens, nil\n}"
+   "code": "func Tokenize(input string) ([]Token, error) {\n\treturn TokenizeFor(Default(), input)\n}"
+  },
+  {
+   "id": "func:ll1.TokenizeFor",
+   "label": "TokenizeFor",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/lexer.go",
+   "line": 40,
+   "doc": "TokenizeFor separa a entrada em tokens da gramática g. Uma palavra [A-Za-z_][A-Za-z0-9_]* igual a um terminal de g (palavra-chave como \"and\" ou \"var\") vira esse terminal, e qualquer outra palavra vira \"id\"; uma sequência de dígitos vira \"num\"; um caractere que é terminal de g vale por si mesmo; espaços são pulados e qualquer outra coisa é *LexicalError. Sem erro, o último token é sempre \"$\".",
+   "signature": "func TokenizeFor(g *Grammar, input string) ([]Token, error)",
+   "code": "func TokenizeFor(g *Grammar, input string) ([]Token, error) {\n\trunes := []rune(input)\n\tvar tokens []Token\n\tfor i := 0; i \u003c len(runes); {\n\t\tr := runes[i]\n\t\tstart := i\n\t\tswitch {\n\t\tcase isSpace(r):\n\t\t\ti++\n\t\t\tcontinue\n\t\tcase isLetter(r):\n\t\t\tfor i \u003c len(runes) \u0026\u0026 (isLetter(runes[i]) || isDigit(runes[i])) {\n\t\t\t\ti++\n\t\t\t}\n\t\t\tword := string(runes[start:i])\n\t\t\tkind := TerminalID\n\t\t\tif g.isKeyword(word) {\n\t\t\t\tkind = word\n\t\t\t}\n\t\t\ttokens = append(tokens, Token{Kind: kind, Lexeme: word, Pos: start + 1})\n\t\tcase isDigit(r):\n\t\t\tfor i \u003c len(runes) \u0026\u0026 isDigit(runes[i]) {\n\t\t\t\ti++\n\t\t\t}\n\t\t\ttokens = append(tokens, Token{Kind: TerminalNum, Lexeme: string(runes[start:i]), Pos: start + 1})\n\t\tcase g.IsTerminal(string(r)):\n\t\t\ti++\n\t\t\ttokens = append(tokens, Token{Kind: string(r), Lexeme: string(r), Pos: start + 1})\n\t\tdefault:\n\t\t\treturn nil, \u0026LexicalError{Char: r, Pos: start + 1}\n\t\t}\n\t}\n\ttokens = append(tokens, Token{Kind: EndMarker, Lexeme: EndMarker, Pos: len(runes) + 1})\n\treturn tokens, nil\n}"
   },
   {
    "id": "func:ll1.chooseProduction",
@@ -1003,8 +1167,8 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/generator.go",
-   "line": 114,
-   "doc": "chooseProduction picks uniformly, or among the shortest-finishing productions when shortest is set.",
+   "line": 140,
+   "doc": "chooseProduction sorteia entre todas as opções ou, com shortest, só entre as que terminam a derivação mais rápido, para a recursão acabar.",
    "signature": "func chooseProduction(options []Production, heights map[int]int, rng *rand.Rand, shortest bool) Production",
    "code": "func chooseProduction(options []Production, heights map[int]int, rng *rand.Rand, shortest bool) Production {\n\tif shortest {\n\t\tbest := math.MaxInt\n\t\tvar fastest []Production\n\t\tfor _, p := range options {\n\t\t\tswitch h := heights[p.Number]; {\n\t\t\tcase h \u003c best:\n\t\t\t\tbest = h\n\t\t\t\tfastest = []Production{p}\n\t\t\tcase h == best:\n\t\t\t\tfastest = append(fastest, p)\n\t\t\t}\n\t\t}\n\t\toptions = fastest\n\t}\n\treturn options[rng.Intn(len(options))]\n}"
   },
@@ -1014,7 +1178,7 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/grammar.go",
-   "line": 119,
+   "line": 120,
    "signature": "func contains(list []string, s string) bool",
    "code": "func contains(list []string, s string) bool {\n\tfor _, item := range list {\n\t\tif item == s {\n\t\t\treturn true\n\t\t}\n\t}\n\treturn false\n}"
   },
@@ -1024,9 +1188,20 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/parser.go",
-   "line": 121,
+   "line": 151,
    "signature": "func describeSymbol(symbol string) string",
    "code": "func describeSymbol(symbol string) string {\n\tif symbol == EndMarker {\n\t\treturn \"fim da entrada\"\n\t}\n\treturn \"'\" + symbol + \"'\"\n}"
+  },
+  {
+   "id": "func:ll1.grammarFrom",
+   "label": "grammarFrom",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/presets.go",
+   "line": 417,
+   "doc": "grammarFrom lê uma regra por linha, \"A -\u003e α | β\", com os símbolos separados por espaço. As cabeças, em ordem, são os não terminais (a primeira é o símbolo inicial); todo outro símbolo é terminal, na ordem em que aparece. As produções são numeradas na ordem de leitura.",
+   "signature": "func grammarFrom(rules string) *Grammar",
+   "code": "func grammarFrom(rules string) *Grammar {\n\tg := \u0026Grammar{}\n\ttype rule struct{ head, body string }\n\tvar parsed []rule\n\tfor _, line := range strings.Split(rules, \"\\n\") {\n\t\thead, body, found := strings.Cut(line, strings.TrimSpace(Arrow))\n\t\tif !found {\n\t\t\tcontinue\n\t\t}\n\t\thead = strings.TrimSpace(head)\n\t\tg.NonTerminals = append(g.NonTerminals, head)\n\t\tparsed = append(parsed, rule{head, body})\n\t}\n\tg.Start = g.NonTerminals[0]\n\tfor _, r := range parsed {\n\t\tfor _, alternative := range strings.Split(r.body, alternativeSeparator) {\n\t\t\tbody := withoutInnerEpsilon(strings.Fields(alternative))\n\t\t\tfor _, symbol := range body {\n\t\t\t\tif symbol != Epsilon \u0026\u0026 !g.IsNonTerminal(symbol) \u0026\u0026 !g.IsTerminal(symbol) {\n\t\t\t\t\tg.Terminals = append(g.Terminals, symbol)\n\t\t\t\t}\n\t\t\t}\n\t\t\tg.Productions = append(g.Productions, Production{Number: len(g.Productions) + 1, Head: r.head, Body: body})\n\t\t}\n\t}\n\treturn g\n}"
   },
   {
    "id": "func:ll1.insertAt",
@@ -1034,7 +1209,7 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/generator.go",
-   "line": 95,
+   "line": 121,
    "signature": "func insertAt(lexemes []string, i int, lexeme string) []string",
    "code": "func insertAt(lexemes []string, i int, lexeme string) []string {\n\tresult := append([]string{}, lexemes[:i]...)\n\tresult = append(result, lexeme)\n\treturn append(result, lexemes[i:]...)\n}"
   },
@@ -1044,7 +1219,7 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/lexer.go",
-   "line": 72,
+   "line": 103,
    "signature": "func isDigit(r rune) bool",
    "code": "func isDigit(r rune) bool {\n\treturn r \u003e= '0' \u0026\u0026 r \u003c= '9'\n}"
   },
@@ -1054,19 +1229,9 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/lexer.go",
-   "line": 68,
+   "line": 99,
    "signature": "func isLetter(r rune) bool",
    "code": "func isLetter(r rune) bool {\n\treturn r == '_' || (r \u003e= 'a' \u0026\u0026 r \u003c= 'z') || (r \u003e= 'A' \u0026\u0026 r \u003c= 'Z')\n}"
-  },
-  {
-   "id": "func:ll1.isOperator",
-   "label": "isOperator",
-   "kind": "func",
-   "package": "ll1",
-   "file": "ll1/lexer.go",
-   "line": 76,
-   "signature": "func isOperator(r rune) bool",
-   "code": "func isOperator(r rune) bool {\n\tfor _, op := range operators {\n\t\tif r == op {\n\t\t\treturn true\n\t\t}\n\t}\n\treturn false\n}"
   },
   {
    "id": "func:ll1.isSpace",
@@ -1074,7 +1239,7 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/lexer.go",
-   "line": 64,
+   "line": 95,
    "signature": "func isSpace(r rune) bool",
    "code": "func isSpace(r rune) bool {\n\treturn r == ' ' || r == '\\t' || r == '\\r' || r == '\\n'\n}"
   },
@@ -1084,7 +1249,7 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/parser.go",
-   "line": 113,
+   "line": 143,
    "signature": "func kinds(tokens []Token) []string",
    "code": "func kinds(tokens []Token) []string {\n\tresult := make([]string, len(tokens))\n\tfor i, token := range tokens {\n\t\tresult[i] = token.Kind\n\t}\n\treturn result\n}"
   },
@@ -1094,7 +1259,7 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/generator.go",
-   "line": 101,
+   "line": 127,
    "signature": "func lexemeFor(terminal string, rng *rand.Rand) string",
    "code": "func lexemeFor(terminal string, rng *rand.Rand) string {\n\tswitch terminal {\n\tcase TerminalID:\n\t\treturn identifierLexemes[rng.Intn(len(identifierLexemes))]\n\tcase TerminalNum:\n\t\treturn strconv.Itoa(rng.Intn(maxNumberLexeme + 1))\n\tdefault:\n\t\treturn terminal\n\t}\n}"
   },
@@ -1104,10 +1269,10 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/parser.go",
-   "line": 95,
-   "doc": "lexicalFailure builds the single-step trace of a sentence rejected by the lexer: the input column shows the tokens read so far and the bad character.",
-   "signature": "func lexicalFailure(start []string, input string, lexErr *LexicalError) Result",
-   "code": "func lexicalFailure(start []string, input string, lexErr *LexicalError) Result {\n\tprefix := string([]rune(input)[:lexErr.Pos-1])\n\tread, _ := Tokenize(prefix)\n\tread = read[:len(read)-1] // drop the \"$\" of the prefix\n\tremaining := append(kinds(read), string(lexErr.Char), EndMarker)\n\tstep := Step{\n\t\tNumber: 1,\n\t\tStack:  start,\n\t\tInput:  remaining,\n\t\tAction: ErrorPrefix + \" léxico: \" + lexErr.Detail(),\n\t}\n\treturn Result{\n\t\tMessage: fmt.Sprintf(messageRejected, lexErr.Error()),\n\t\tTokens:  read,\n\t\tSteps:   []Step{step},\n\t}\n}"
+   "line": 112,
+   "doc": "lexicalFailure monta o rastro de um só passo de uma sentença barrada pelo léxico: a coluna da entrada mostra os tokens lidos até ali e o caractere inválido.",
+   "signature": "func lexicalFailure(g *Grammar, start []string, input string, lexErr *LexicalError) Result",
+   "code": "func lexicalFailure(g *Grammar, start []string, input string, lexErr *LexicalError) Result {\n\tprefix := string([]rune(input)[:lexErr.Pos-1])\n\tread, _ := TokenizeFor(g, prefix)\n\tread = read[:len(read)-1] // tira o \"$\" do prefixo\n\tremaining := append(kinds(read), string(lexErr.Char), EndMarker)\n\tstep := Step{\n\t\tNumber: 1,\n\t\tStack:  start,\n\t\tInput:  remaining,\n\t\tAction: ErrorPrefix + \" léxico: \" + lexErr.Detail(),\n\t}\n\treturn Result{\n\t\tMessage: fmt.Sprintf(messageRejected, lexErr.Error()),\n\t\tTokens:  read,\n\t\tSteps:   []Step{step},\n\t}\n}"
   },
   {
    "id": "func:ll1.matchAction",
@@ -1115,8 +1280,8 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/parser.go",
-   "line": 137,
-   "doc": "matchAction reads \"Casa 'id' (soma)\", or just \"Casa '+'\" when the lexeme is the terminal itself.",
+   "line": 169,
+   "doc": "matchAction escreve \"Casa 'id' (soma)\", ou só \"Casa '+'\" quando o lexema é o próprio terminal.",
    "signature": "func matchAction(token Token) string",
    "code": "func matchAction(token Token) string {\n\tif token.Lexeme == token.Kind {\n\t\treturn fmt.Sprintf(\"Casa '%s'\", token.Kind)\n\t}\n\treturn fmt.Sprintf(\"Casa '%s' (%s)\", token.Kind, token.Lexeme)\n}"
   },
@@ -1126,10 +1291,21 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/generator.go",
-   "line": 62,
-   "doc": "mutate applies one random kind of damage to a copy of the lexemes.",
-   "signature": "func mutate(lexemes []string, rng *rand.Rand) []string",
-   "code": "func mutate(lexemes []string, rng *rand.Rand) []string {\n\tconst (\n\t\tdropToken = iota\n\t\tduplicateOperator\n\t\tunbalancedParenthesis\n\t\tillegalCharacter\n\t\tmutationCount\n\t)\n\tswitch rng.Intn(mutationCount) {\n\tcase dropToken:\n\t\ti := rng.Intn(len(lexemes))\n\t\treturn append(append([]string{}, lexemes[:i]...), lexemes[i+1:]...)\n\tcase duplicateOperator:\n\t\tvar operatorIndexes []int\n\t\tfor i, lexeme := range lexemes {\n\t\t\tif strings.Contains(operators, lexeme) {\n\t\t\t\toperatorIndexes = append(operatorIndexes, i)\n\t\t\t}\n\t\t}\n\t\tif len(operatorIndexes) \u003e 0 {\n\t\t\ti := operatorIndexes[rng.Intn(len(operatorIndexes))]\n\t\t\treturn insertAt(lexemes, i, lexemes[i])\n\t\t}\n\t\treturn insertAt(lexemes, rng.Intn(len(lexemes)+1), \"+\")\n\tcase unbalancedParenthesis:\n\t\tparenthesis := []string{\"(\", \")\"}[rng.Intn(2)]\n\t\treturn insertAt(lexemes, rng.Intn(len(lexemes)+1), parenthesis)\n\tdefault:\n\t\tchar := illegalCharacters[rng.Intn(len(illegalCharacters))]\n\t\treturn insertAt(lexemes, rng.Intn(len(lexemes)+1), char)\n\t}\n}"
+   "line": 72,
+   "doc": "mutate aplica um estrago aleatório numa cópia dos lexemas. Os \"operadores\" são os terminais de um caractere da gramática. Um estrago que não se aplica devolve os lexemas sem mudança, e GenerateInvalid tenta de novo.",
+   "signature": "func mutate(g *Grammar, lexemes []string, rng *rand.Rand) []string",
+   "code": "func mutate(g *Grammar, lexemes []string, rng *rand.Rand) []string {\n\toperators := g.punctuation()\n\tconst (\n\t\tdropToken = iota\n\t\tduplicateOperator\n\t\tunbalancedParenthesis\n\t\tillegalCharacter\n\t\tmutationCount\n\t)\n\tswitch rng.Intn(mutationCount) {\n\tcase dropToken:\n\t\tif len(lexemes) == 0 {\n\t\t\treturn lexemes\n\t\t}\n\t\ti := rng.Intn(len(lexemes))\n\t\treturn append(append([]string{}, lexemes[:i]...), lexemes[i+1:]...)\n\tcase duplicateOperator:\n\t\tvar operatorIndexes []int\n\t\tfor i, lexeme := range lexemes {\n\t\t\tif contains(operators, lexeme) {\n\t\t\t\toperatorIndexes = append(operatorIndexes, i)\n\t\t\t}\n\t\t}\n\t\tif len(operatorIndexes) \u003e 0 {\n\t\t\ti := operatorIndexes[rng.Intn(len(operatorIndexes))]\n\t\t\treturn insertAt(lexemes, i, lexemes[i])\n\t\t}\n\t\tif len(operators) == 0 {\n\t\t\treturn lexemes\n\t\t}\n\t\treturn insertAt(lexemes, rng.Intn(len(lexemes)+1), operators[0])\n\tcase unbalancedParenthesis:\n\t\tparenthesis := []string{\"(\", \")\"}[rng.Intn(2)]\n\t\treturn insertAt(lexemes, rng.Intn(len(lexemes)+1), parenthesis)\n\tdefault:\n\t\tvar illegal []string\n\t\tfor _, char := range illegalCharacters {\n\t\t\tif !g.IsTerminal(char) {\n\t\t\t\tillegal = append(illegal, char)\n\t\t\t}\n// … (+8 linhas)"
+  },
+  {
+   "id": "func:ll1.refuseConflicts",
+   "label": "refuseConflicts",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/parser.go",
+   "line": 133,
+   "doc": "refuseConflicts monta o rastro de um só passo de uma sentença que não é analisada porque a gramática não é LL(1). A coluna da entrada mostra os tokens quando a sentença não tem erro léxico.",
+   "signature": "func refuseConflicts(g *Grammar, start []string, input string) Result",
+   "code": "func refuseConflicts(g *Grammar, start []string, input string) Result {\n\ttokens, err := TokenizeFor(g, input)\n\tremaining := []string{EndMarker}\n\tif err == nil {\n\t\tremaining = kinds(tokens)\n\t}\n\tstep := Step{Number: 1, Stack: start, Input: remaining, Action: ErrorPrefix + \": \" + MessageNotLL1}\n\treturn Result{Message: MessageNotLL1 + \".\", Tokens: tokens, Steps: []Step{step}}\n}"
   },
   {
    "id": "func:ll1.reject",
@@ -1137,7 +1313,8 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/parser.go",
-   "line": 86,
+   "line": 103,
+   "doc": "reject fecha o rastro com o passo de erro e usa o mesmo motivo na mensagem final, para a tela e o rastro dizerem a mesma coisa.",
    "signature": "func reject(result Result, step Step, reason string) Result",
    "code": "func reject(result Result, step Step, reason string) Result {\n\tstep.Action = ErrorPrefix + \": \" + reason\n\tresult.Steps = append(result.Steps, step)\n\tresult.Message = fmt.Sprintf(messageRejected, reason)\n\treturn result\n}"
   },
@@ -1147,8 +1324,8 @@
    "kind": "method",
    "package": "ll1",
    "file": "ll1/sets.go",
-   "line": 7,
-   "doc": "addAll adds every symbol of other except skip and reports whether s grew.",
+   "line": 12,
+   "doc": "addAll junta todos os símbolos de other, menos skip, e diz se s cresceu. É esse \"cresceu\" que decide se o ponto fixo precisa de mais uma volta.",
    "signature": "func (s symbolSet) addAll(other symbolSet, skip string) bool",
    "code": "func (s symbolSet) addAll(other symbolSet, skip string) bool {\n\tgrew := false\n\tfor symbol := range other {\n\t\tif symbol != skip \u0026\u0026 !s[symbol] {\n\t\t\ts[symbol] = true\n\t\t\tgrew = true\n\t\t}\n\t}\n\treturn grew\n}"
   },
@@ -1158,16 +1335,28 @@
    "kind": "func",
    "package": "ll1",
    "file": "ll1/parser.go",
-   "line": 128,
+   "line": 160,
+   "doc": "unexpected descreve o token que travou a análise: o lexema e a posição ajudam o usuário a achar o erro no que digitou.",
    "signature": "func unexpected(token Token) string",
    "code": "func unexpected(token Token) string {\n\tif token.Kind == EndMarker {\n\t\treturn \"fim da entrada inesperado\"\n\t}\n\treturn fmt.Sprintf(\"token '%s' inesperado na posição %d\", token.Lexeme, token.Pos)\n}"
+  },
+  {
+   "id": "func:ll1.withoutInnerEpsilon",
+   "label": "withoutInnerEpsilon",
+   "kind": "func",
+   "package": "ll1",
+   "file": "ll1/presets.go",
+   "line": 447,
+   "doc": "withoutInnerEpsilon tira o ε de um corpo com outros símbolos (\"ε b\" é só \"b\"); ε só fica quando é o corpo inteiro, senão o analisador o empilharia.",
+   "signature": "func withoutInnerEpsilon(body []string) []string",
+   "code": "func withoutInnerEpsilon(body []string) []string {\n\tif len(body) \u003c= 1 {\n\t\treturn body\n\t}\n\tvar result []string\n\tfor _, symbol := range body {\n\t\tif symbol != Epsilon {\n\t\t\tresult = append(result, symbol)\n\t\t}\n\t}\n\tif len(result) == 0 {\n\t\treturn []string{Epsilon}\n\t}\n\treturn result\n}"
   },
   {
    "id": "pkg:cmd/analisador",
    "label": "cmd/analisador",
    "kind": "package",
    "package": "cmd/analisador",
-   "doc": "Command analisador is the terminal front end of the LL(1) predictive table-driven parser: it shows the grammar, the FIRST and FOLLOW sets and the parsing table, and traces the recognition of typed or generated sentences.",
+   "doc": "Command analisador é a versão de terminal do analisador LL(1) preditivo tabular: mostra a gramática, os conjuntos FIRST e FOLLOW e a tabela de parsing, e rastreia o reconhecimento de sentenças digitadas ou geradas.",
    "signature": "package main"
   },
   {
@@ -1175,7 +1364,7 @@
    "label": "cmd/codegraph",
    "kind": "package",
    "package": "cmd/codegraph",
-   "doc": "Command codegraph reads the Go source of this module and writes a JSON graph (packages, files, types, functions, methods and the edges between them) that the /graph page draws. With -notes it reads the Markdown vault in graph/ instead and writes the notes and their [[wikilinks]].",
+   "doc": "Command codegraph lê o código Go deste módulo e grava um grafo em JSON (pacotes, arquivos, tipos, funções, métodos e as ligações entre eles) que a página /graph desenha. Com -notes, lê em vez disso as notas Markdown de graph/ e grava as notas e os seus [[wikilinks]].",
    "signature": "package main"
   },
   {
@@ -1183,7 +1372,7 @@
    "label": "cmd/wasm",
    "kind": "package",
    "package": "cmd/wasm",
-   "doc": "Command wasm exposes the ll1 package to the browser as globalThis.ll1. Every function returns a JSON string, except generate and generateInvalid, which return the sentence itself.",
+   "doc": "Command wasm expõe o pacote ll1 ao navegador como globalThis.ll1. Toda função devolve um texto JSON, menos generate e generateInvalid, que devolvem a própria sentença. Toda função menos presets recebe, por último, o id opcional de uma gramática pronta; id ausente ou desconhecido quer dizer a gramática do trabalho.",
    "signature": "package main"
   },
   {
@@ -1191,7 +1380,7 @@
    "label": "ll1",
    "kind": "package",
    "package": "ll1",
-   "doc": "Package ll1 implements a table-driven (non-recursive) predictive LL(1) parser for a fixed arithmetic expression grammar: FIRST and FOLLOW sets, the parsing table, a lexer, the stack parser and a sentence generator.",
+   "doc": "Package ll1 implementa o analisador LL(1) preditivo tabular (não recursivo): conjuntos FIRST e FOLLOW, tabela de parsing, analisador léxico, analisador com pilha e gerador de sentenças. A gramática do trabalho é a das expressões aritméticas; as outras gramáticas prontas ficam em presets.go.",
    "signature": "package ll1"
   },
   {
@@ -1200,10 +1389,10 @@
    "kind": "type",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 44,
-   "doc": "app holds the parser state and the terminal streams of one session.",
+   "line": 39,
+   "doc": "app guarda o estado do analisador e a entrada e saída de uma sessão.",
    "signature": "type app struct",
-   "code": "type app struct {\n\tgrammar *ll1.Grammar\n\ttable   *ll1.Table\n\trng     *rand.Rand\n\tin      *bufio.Scanner\n\tout     io.Writer\n\tcolors  palette\n}"
+   "code": "type app struct {\n\tpreset  ll1.Preset\n\tgrammar *ll1.Grammar\n\ttable   *ll1.Table\n\trng     *rand.Rand\n\tin      *bufio.Scanner\n\tout     io.Writer\n\tcolors  palette\n}"
   },
   {
    "id": "type:cmd/analisador.cellStyle",
@@ -1212,9 +1401,9 @@
    "package": "cmd/analisador",
    "file": "cmd/analisador/render.go",
    "line": 46,
-   "doc": "cellStyle picks a style for a body cell; \"\" means plain.",
-   "signature": "type cellStyle func(row, column int, text string) string",
-   "code": "type cellStyle func(row, column int, text string) string"
+   "doc": "cellStyle escolhe o estilo de uma célula do corpo; \"\" é texto puro.",
+   "signature": "type cellStyle func(column int, text string) string",
+   "code": "type cellStyle func(column int, text string) string"
   },
   {
    "id": "type:cmd/analisador.menuOption",
@@ -1222,10 +1411,10 @@
    "kind": "type",
    "package": "cmd/analisador",
    "file": "cmd/analisador/main.go",
-   "line": 26,
-   "doc": "menuOption is one entry of the main menu.",
+   "line": 20,
+   "doc": "menuOption é uma entrada do menu principal.",
    "signature": "type menuOption struct",
-   "code": "type menuOption struct {\n\tkey    string\n\tlabel  string\n\taction func(a *app) bool // false when input ended\n}"
+   "code": "type menuOption struct {\n\tkey    string\n\tlabel  string\n\taction func(a *app) bool // false quando a entrada acabou\n}"
   },
   {
    "id": "type:cmd/analisador.palette",
@@ -1234,7 +1423,7 @@
    "package": "cmd/analisador",
    "file": "cmd/analisador/render.go",
    "line": 19,
-   "doc": "palette wraps text in ANSI styles, or leaves it plain when disabled.",
+   "doc": "palette envolve o texto em estilos ANSI, ou o deixa puro quando desligada.",
    "signature": "type palette struct",
    "code": "type palette struct {\n\tenabled bool\n}"
   },
@@ -1245,7 +1434,7 @@
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
    "line": 68,
-   "doc": "Edge is a directed relation between two nodes.",
+   "doc": "Edge é uma relação com sentido entre dois nós.",
    "signature": "type Edge struct",
    "code": "type Edge struct {\n\tFrom string `json:\"from\"`\n\tTo   string `json:\"to\"`\n\tKind string `json:\"kind\"`\n}"
   },
@@ -1256,7 +1445,7 @@
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
    "line": 75,
-   "doc": "Graph is the whole JSON document.",
+   "doc": "Graph é o documento JSON inteiro.",
    "signature": "type Graph struct",
    "code": "type Graph struct {\n\tModule string `json:\"module\"`\n\tNodes  []Node `json:\"nodes\"`\n\tEdges  []Edge `json:\"edges\"`\n}"
   },
@@ -1267,7 +1456,7 @@
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
    "line": 55,
-   "doc": "Node is one package, file, type, function or method.",
+   "doc": "Node é um pacote, arquivo, tipo, função ou método.",
    "signature": "type Node struct",
    "code": "type Node struct {\n\tID        string `json:\"id\"`\n\tLabel     string `json:\"label\"`\n\tKind      string `json:\"kind\"`\n\tPackage   string `json:\"package\"`\n\tFile      string `json:\"file,omitempty\"`\n\tLine      int    `json:\"line,omitempty\"`\n\tDoc       string `json:\"doc,omitempty\"`\n\tSignature string `json:\"signature,omitempty\"`\n\tCode      string `json:\"code,omitempty\"`\n}"
   },
@@ -1278,9 +1467,9 @@
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/notes.go",
    "line": 31,
-   "doc": "Note is one Markdown note of the vault: front matter, title and body.",
+   "doc": "Note é uma nota Markdown do cofre: cabeçalho, título e corpo.",
    "signature": "type Note struct",
-   "code": "type Note struct {\n\tID    string `json:\"id\"` // file name without .md, the name [[wikilinks]] use\n\tTitle string `json:\"title\"`\n\tClass string `json:\"class,omitempty\"`\n\tPath  string `json:\"path,omitempty\"` // source file under the module root\n\tKind  string `json:\"kind,omitempty\"`\n\tStep  string `json:\"step,omitempty\"`\n\tDir   string `json:\"dir,omitempty\"` // folder of the note under the vault root\n\tBody  string `json:\"body\"`          // Markdown without the front matter and the title line\n}"
+   "code": "type Note struct {\n\tID    string `json:\"id\"` // nome do arquivo sem .md, o nome usado nos [[wikilinks]]\n\tTitle string `json:\"title\"`\n\tClass string `json:\"class,omitempty\"`\n\tPath  string `json:\"path,omitempty\"` // arquivo de código, a partir da raiz do módulo\n\tKind  string `json:\"kind,omitempty\"`\n\tStep  string `json:\"step,omitempty\"`\n\tDir   string `json:\"dir,omitempty\"` // pasta da nota dentro do cofre\n\tBody  string `json:\"body\"`          // Markdown sem o cabeçalho e sem a linha do título\n}"
   },
   {
    "id": "type:cmd/codegraph.NoteEdge",
@@ -1289,7 +1478,7 @@
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/notes.go",
    "line": 43,
-   "doc": "NoteEdge is a [[wikilink]] from one note to another.",
+   "doc": "NoteEdge é um [[wikilink]] de uma nota para outra.",
    "signature": "type NoteEdge struct",
    "code": "type NoteEdge struct {\n\tFrom string `json:\"from\"`\n\tTo   string `json:\"to\"`\n}"
   },
@@ -1300,7 +1489,7 @@
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/notes.go",
    "line": 49,
-   "doc": "NotesGraph is the JSON document written by -notes.",
+   "doc": "NotesGraph é o documento JSON gravado com -notes.",
    "signature": "type NotesGraph struct",
    "code": "type NotesGraph struct {\n\tNodes []Note     `json:\"nodes\"`\n\tEdges []NoteEdge `json:\"edges\"`\n}"
   },
@@ -1312,7 +1501,7 @@
    "file": "cmd/codegraph/main.go",
    "line": 90,
    "signature": "type builder struct",
-   "code": "type builder struct {\n\tmodule string\n\tfset   *token.FileSet\n\tnodes  map[string]*Node\n\tedges  map[Edge]bool\n\n\tfiles         []*parsedFile\n\tfuncsByDir    map[string]map[string]string // directory -\u003e function name -\u003e node id\n\tmethodsByName map[string][]string          // method name -\u003e node ids\n\tdeclIDs       map[*ast.FuncDecl]string     // declaration -\u003e node id\n\tsources       map[string][]string          // file path -\u003e lines\n}"
+   "code": "type builder struct {\n\tmodule string\n\tfset   *token.FileSet\n\tnodes  map[string]*Node\n\tedges  map[Edge]bool\n\n\tfiles         []*parsedFile\n\tfuncsByDir    map[string]map[string]string // pasta -\u003e nome da função -\u003e id do nó\n\tmethodsByName map[string][]string          // nome do método -\u003e ids dos nós\n\tdeclIDs       map[*ast.FuncDecl]string     // declaração -\u003e id do nó\n\tsources       map[string][]string          // caminho do arquivo -\u003e linhas\n}"
   },
   {
    "id": "type:cmd/codegraph.parsedFile",
@@ -1321,9 +1510,9 @@
    "package": "cmd/codegraph",
    "file": "cmd/codegraph/main.go",
    "line": 82,
-   "doc": "parsedFile keeps what the second pass needs to resolve calls.",
+   "doc": "parsedFile guarda o que a segunda passada precisa para resolver as chamadas.",
    "signature": "type parsedFile struct",
-   "code": "type parsedFile struct {\n\tdir     string\n\trel     string\n\tfile    *ast.File\n\timports map[string]string // local import name -\u003e module directory (\"\" for outside the module)\n\tdecls   []*ast.FuncDecl\n}"
+   "code": "type parsedFile struct {\n\tdir     string\n\trel     string\n\tfile    *ast.File\n\timports map[string]string // nome local do import -\u003e pasta no módulo (\"\" se for de fora)\n\tdecls   []*ast.FuncDecl\n}"
   },
   {
    "id": "type:cmd/wasm.cellRefJSON",
@@ -1341,9 +1530,30 @@
    "kind": "type",
    "package": "cmd/wasm",
    "file": "cmd/wasm/main.go",
-   "line": 28,
+   "line": 29,
    "signature": "type grammarJSON struct",
-   "code": "type grammarJSON struct {\n\tStart        string           `json:\"start\"`\n\tProductions  []productionJSON `json:\"productions\"`\n\tGrouped      []string         `json:\"grouped\"`\n\tTerminals    []string         `json:\"terminals\"`\n\tNonTerminals []string         `json:\"nonTerminals\"`\n}"
+   "code": "type grammarJSON struct {\n\tStart        string           `json:\"start\"`\n\tProductions  []productionJSON `json:\"productions\"`\n\tTerminals    []string         `json:\"terminals\"`\n\tNonTerminals []string         `json:\"nonTerminals\"`\n}"
+  },
+  {
+   "id": "type:cmd/wasm.loaded",
+   "label": "loaded",
+   "kind": "type",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 102,
+   "doc": "loaded é uma gramática pronta com a sua tabela, montada uma vez no início.",
+   "signature": "type loaded struct",
+   "code": "type loaded struct {\n\tpreset ll1.Preset\n\ttable  *ll1.Table\n}"
+  },
+  {
+   "id": "type:cmd/wasm.presetJSON",
+   "label": "presetJSON",
+   "kind": "type",
+   "package": "cmd/wasm",
+   "file": "cmd/wasm/main.go",
+   "line": 85,
+   "signature": "type presetJSON struct",
+   "code": "type presetJSON struct {\n\tID              string   `json:\"id\"`\n\tName            string   `json:\"name\"`\n\tDescription     string   `json:\"description\"`\n\tGroup           string   `json:\"group\"` // título do grupo na lista de escolha\n\tIsDefault       bool     `json:\"isDefault\"`\n\tAuthor          string   `json:\"author\"`\n\tSource          string   `json:\"source\"`\n\tURL             string   `json:\"url\"`\n\tAdapted         bool     `json:\"adapted\"`\n\tIsLL1           bool     `json:\"isLL1\"`\n\tTerminals       []string `json:\"terminals\"`\n\tExamples        []string `json:\"examples\"`\n\tInvalidExamples []string `json:\"invalidExamples\"`\n}"
   },
   {
    "id": "type:cmd/wasm.productionJSON",
@@ -1351,9 +1561,9 @@
    "kind": "type",
    "package": "cmd/wasm",
    "file": "cmd/wasm/main.go",
-   "line": 21,
+   "line": 22,
    "signature": "type productionJSON struct",
-   "code": "type productionJSON struct {\n\tNumber int      `json:\"number\"`\n\tHead   string   `json:\"head\"`\n\tBody   []string `json:\"body\"`\n\tText   string   `json:\"text\"`\n}"
+   "code": "type productionJSON struct {\n\tNumber int      `json:\"number\"`\n\tHead   string   `json:\"head\"`\n\tBody   []string `json:\"body\"`\n\tFirst  []string `json:\"first\"` // FIRST do corpo, usado no painel da condição LL(1)\n}"
   },
   {
    "id": "type:cmd/wasm.resultJSON",
@@ -1383,7 +1593,7 @@
    "file": "cmd/wasm/main.go",
    "line": 64,
    "signature": "type stepJSON struct",
-   "code": "type stepJSON struct {\n\tNumber int          `json:\"number\"`\n\tStack  []string     `json:\"stack\"`\n\tInput  []string     `json:\"input\"`\n\tAction string       `json:\"action\"`\n\tCell   *cellRefJSON `json:\"cell\"` // table cell consulted by this step, if any\n}"
+   "code": "type stepJSON struct {\n\tNumber int          `json:\"number\"`\n\tStack  []string     `json:\"stack\"`\n\tInput  []string     `json:\"input\"`\n\tAction string       `json:\"action\"`\n\tCell   *cellRefJSON `json:\"cell\"` // célula da tabela consultada neste passo, se houver\n}"
   },
   {
    "id": "type:cmd/wasm.tableCellJSON",
@@ -1393,7 +1603,7 @@
    "file": "cmd/wasm/main.go",
    "line": 42,
    "signature": "type tableCellJSON struct",
-   "code": "type tableCellJSON struct {\n\tColumn string `json:\"column\"`\n\tNumber int    `json:\"number\"` // 0 means an empty (error) cell\n\tText   string `json:\"text\"`\n}"
+   "code": "type tableCellJSON struct {\n\tColumn    string `json:\"column\"`\n\tNumber    int    `json:\"number\"`              // 0 é célula vazia (erro)\n\tConflicts []int  `json:\"conflicts,omitempty\"` // todas as produções que disputam a célula\n}"
   },
   {
    "id": "type:cmd/wasm.tableJSON",
@@ -1426,15 +1636,26 @@
    "code": "type tokenJSON struct {\n\tKind   string `json:\"kind\"`\n\tLexeme string `json:\"lexeme\"`\n\tPos    int    `json:\"pos\"`\n}"
   },
   {
+   "id": "type:ll1.ConflictCell",
+   "label": "ConflictCell",
+   "kind": "type",
+   "package": "ll1",
+   "file": "ll1/table.go",
+   "line": 18,
+   "doc": "ConflictCell é uma célula da tabela pedida por mais de uma produção.",
+   "signature": "type ConflictCell struct",
+   "code": "type ConflictCell struct {\n\tNonTerminal string\n\tColumn      string\n\tNumbers     []int // todas as produções que pedem a célula; a primeira fica com ela\n}"
+  },
+  {
    "id": "type:ll1.Grammar",
    "label": "Grammar",
    "kind": "type",
    "package": "ll1",
    "file": "ll1/grammar.go",
-   "line": 41,
-   "doc": "Grammar is a context-free grammar with symbols kept in display order.",
+   "line": 42,
+   "doc": "Grammar é uma gramática livre de contexto com os símbolos na ordem de exibição.",
    "signature": "type Grammar struct",
-   "code": "type Grammar struct {\n\tStart        string\n\tNonTerminals []string // display order: E E' T T' F\n\tTerminals    []string // id num + - * / ( )   (no ε, no $)\n\tProductions  []Production\n}"
+   "code": "type Grammar struct {\n\tStart        string\n\tNonTerminals []string // ordem de exibição: E E' T T' F\n\tTerminals    []string // id num + - * / ( )   (sem ε e sem $)\n\tProductions  []Production\n}"
   },
   {
    "id": "type:ll1.LexicalError",
@@ -1443,9 +1664,31 @@
    "package": "ll1",
    "file": "ll1/lexer.go",
    "line": 13,
-   "doc": "LexicalError reports a character that does not start any token.",
+   "doc": "LexicalError aponta um caractere que não começa nenhum token.",
    "signature": "type LexicalError struct",
-   "code": "type LexicalError struct {\n\tChar rune\n\tPos  int // 1-based column in the input\n}"
+   "code": "type LexicalError struct {\n\tChar rune\n\tPos  int // coluna na entrada, contando a partir de 1\n}"
+  },
+  {
+   "id": "type:ll1.Preset",
+   "label": "Preset",
+   "kind": "type",
+   "package": "ll1",
+   "file": "ll1/presets.go",
+   "line": 33,
+   "doc": "Preset é uma gramática pronta que o usuário pode escolher. Examples estão na linguagem (são aceitos, menos numa gramática com conflitos, que recusa tudo); InvalidExamples têm de ser rejeitados.",
+   "signature": "type Preset struct",
+   "code": "type Preset struct {\n\tID              string\n\tName            string\n\tDescription     string\n\tGroup           PresetGroup\n\tAuthor          string // vazio nas gramáticas do próprio projeto\n\tSource          string // título da publicação\n\tURL             string\n\tAdapted         bool // a gramática publicada foi alterada para ser LL(1)\n\tGrammar         *Grammar\n\tExamples        []string\n\tInvalidExamples []string\n}"
+  },
+  {
+   "id": "type:ll1.PresetGroup",
+   "label": "PresetGroup",
+   "kind": "type",
+   "package": "ll1",
+   "file": "ll1/presets.go",
+   "line": 7,
+   "doc": "PresetGroup diz de onde vem uma gramática pronta; a web agrupa a lista de escolha por ele e o terminal agrupa a sua lista.",
+   "signature": "type PresetGroup int",
+   "code": "type PresetGroup int"
   },
   {
    "id": "type:ll1.Production",
@@ -1453,10 +1696,10 @@
    "kind": "type",
    "package": "ll1",
    "file": "ll1/grammar.go",
-   "line": 24,
-   "doc": "Production is one numbered grammar rule.",
+   "line": 25,
+   "doc": "Production é uma regra numerada da gramática.",
    "signature": "type Production struct",
-   "code": "type Production struct {\n\tNumber int      // 1-based\n\tHead   string   // non-terminal on the left side\n\tBody   []string // []string{Epsilon} for the empty production\n}"
+   "code": "type Production struct {\n\tNumber int      // começa em 1 e é a posição em Grammar.Productions\n\tHead   string   // não terminal do lado esquerdo\n\tBody   []string // []string{Epsilon} na produção vazia\n}"
   },
   {
    "id": "type:ll1.Result",
@@ -1465,9 +1708,9 @@
    "package": "ll1",
    "file": "ll1/parser.go",
    "line": 14,
-   "doc": "Result is the outcome of parsing one sentence.",
+   "doc": "Result é o resultado da análise de uma sentença.",
    "signature": "type Result struct",
-   "code": "type Result struct {\n\tAccepted bool\n\tMessage  string // Portuguese final message\n\tTokens   []Token\n\tSteps    []Step\n}"
+   "code": "type Result struct {\n\tAccepted bool\n\tMessage  string // mensagem final mostrada ao usuário\n\tTokens   []Token\n\tSteps    []Step\n}"
   },
   {
    "id": "type:ll1.Step",
@@ -1476,9 +1719,9 @@
    "package": "ll1",
    "file": "ll1/parser.go",
    "line": 6,
-   "doc": "Step is one row of the parsing trace.",
+   "doc": "Step é uma linha do rastro da análise.",
    "signature": "type Step struct",
-   "code": "type Step struct {\n\tNumber int\n\tStack  []string // bottom first, so the top is the last element; starts as [\"$\", \"E\"]\n\tInput  []string // remaining token kinds, current first, ends with \"$\"\n\tAction string   // Portuguese, e.g. \"E -\u003e T E'\", \"Casa 'id' (soma)\", \"Aceita\", \"Erro: ...\"\n}"
+   "code": "type Step struct {\n\tNumber int\n\tStack  []string // fundo primeiro, então o topo é o último; começa como [\"$\", \"E\"]\n\tInput  []string // tipos dos tokens que faltam, o atual primeiro, termina em \"$\"\n\tAction string   // ex.: \"E -\u003e T E'\", \"Casa 'id' (soma)\", \"Aceita\", \"Erro: ...\"\n}"
   },
   {
    "id": "type:ll1.Table",
@@ -1487,9 +1730,9 @@
    "package": "ll1",
    "file": "ll1/table.go",
    "line": 6,
-   "doc": "Table is the LL(1) parsing table M[non-terminal, terminal].",
+   "doc": "Table é a tabela de parsing LL(1) M[não terminal, terminal].",
    "signature": "type Table struct",
-   "code": "type Table struct {\n\tGrammar   *Grammar\n\tColumns   []string                  // Terminals + \"$\"\n\tCells     map[string]map[string]int // non-terminal -\u003e column -\u003e production Number (missing = error)\n\tConflicts []string                  // empty for an LL(1) grammar\n}"
+   "code": "type Table struct {\n\tGrammar   *Grammar\n\tColumns   []string                  // Terminals + \"$\"\n\tCells     map[string]map[string]int // não terminal -\u003e coluna -\u003e número da produção (ausente = erro)\n\tConflicts []string                  // vazio numa gramática LL(1)\n\n\t// ConflictCells lista cada célula pedida por mais de uma produção, na\n\t// ordem em que os conflitos apareceram.\n\tConflictCells []ConflictCell\n}"
   },
   {
    "id": "type:ll1.Token",
@@ -1498,9 +1741,9 @@
    "package": "ll1",
    "file": "ll1/lexer.go",
    "line": 6,
-   "doc": "Token is one lexical unit of the input.",
+   "doc": "Token é uma unidade léxica da entrada.",
    "signature": "type Token struct",
-   "code": "type Token struct {\n\tKind   string // terminal name (\"id\", \"num\", \"+\", ...) or \"$\"\n\tLexeme string // text as typed (\"soma\", \"42\", \"+\"); \"$\" for the end\n\tPos    int    // 1-based column in the input\n}"
+   "code": "type Token struct {\n\tKind   string // nome do terminal (\"id\", \"num\", \"+\", ...) ou \"$\"\n\tLexeme string // texto como foi digitado (\"soma\", \"42\", \"+\"); \"$\" no fim\n\tPos    int    // coluna na entrada, contando a partir de 1\n}"
   },
   {
    "id": "type:ll1.symbolSet",
@@ -1508,8 +1751,8 @@
    "kind": "type",
    "package": "ll1",
    "file": "ll1/sets.go",
-   "line": 4,
-   "doc": "symbolSet is an unordered set of grammar symbols used while iterating.",
+   "line": 5,
+   "doc": "symbolSet é um conjunto de símbolos sem ordem, usado durante as repetições; a ordem de exibição só é aplicada no fim, por ordered.",
    "signature": "type symbolSet map[string]bool",
    "code": "type symbolSet map[string]bool"
   }
@@ -1528,6 +1771,11 @@
   {
    "from": "file:cmd/analisador/main.go",
    "to": "func:cmd/analisador.app.analyze",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.app.choosePreset",
    "kind": "contains"
   },
   {
@@ -1587,6 +1835,11 @@
   },
   {
    "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.app.use",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
    "to": "func:cmd/analisador.app.waitForEnter",
    "kind": "contains"
   },
@@ -1608,6 +1861,11 @@
   {
    "from": "file:cmd/analisador/main.go",
    "to": "func:cmd/analisador.setText",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/analisador/main.go",
+   "to": "func:cmd/analisador.sourceText",
    "kind": "contains"
   },
   {
@@ -1852,12 +2110,32 @@
   },
   {
    "from": "file:cmd/wasm/main.go",
+   "to": "func:cmd/wasm.indexPresets",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "func:cmd/wasm.loadPresets",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
    "to": "func:cmd/wasm.main",
    "kind": "contains"
   },
   {
    "from": "file:cmd/wasm/main.go",
    "to": "func:cmd/wasm.parseValue",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "func:cmd/wasm.presetsValue",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "func:cmd/wasm.selected",
    "kind": "contains"
   },
   {
@@ -1883,6 +2161,16 @@
   {
    "from": "file:cmd/wasm/main.go",
    "to": "type:cmd/wasm.grammarJSON",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "type:cmd/wasm.loaded",
+   "kind": "contains"
+  },
+  {
+   "from": "file:cmd/wasm/main.go",
+   "to": "type:cmd/wasm.presetJSON",
    "kind": "contains"
   },
   {
@@ -2012,6 +2300,16 @@
   },
   {
    "from": "file:ll1/lexer.go",
+   "to": "func:ll1.Grammar.isKeyword",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/lexer.go",
+   "to": "func:ll1.Grammar.punctuation",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/lexer.go",
    "to": "func:ll1.LexicalError.Detail",
    "kind": "contains"
   },
@@ -2027,17 +2325,17 @@
   },
   {
    "from": "file:ll1/lexer.go",
+   "to": "func:ll1.TokenizeFor",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/lexer.go",
    "to": "func:ll1.isDigit",
    "kind": "contains"
   },
   {
    "from": "file:ll1/lexer.go",
    "to": "func:ll1.isLetter",
-   "kind": "contains"
-  },
-  {
-   "from": "file:ll1/lexer.go",
-   "to": "func:ll1.isOperator",
    "kind": "contains"
   },
   {
@@ -2082,6 +2380,11 @@
   },
   {
    "from": "file:ll1/parser.go",
+   "to": "func:ll1.refuseConflicts",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/parser.go",
    "to": "func:ll1.reject",
    "kind": "contains"
   },
@@ -2098,6 +2401,41 @@
   {
    "from": "file:ll1/parser.go",
    "to": "type:ll1.Step",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/presets.go",
+   "to": "func:ll1.PresetByID",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/presets.go",
+   "to": "func:ll1.PresetGroup.Label",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/presets.go",
+   "to": "func:ll1.Presets",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/presets.go",
+   "to": "func:ll1.grammarFrom",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/presets.go",
+   "to": "func:ll1.withoutInnerEpsilon",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/presets.go",
+   "to": "type:ll1.Preset",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/presets.go",
+   "to": "type:ll1.PresetGroup",
    "kind": "contains"
   },
   {
@@ -2162,6 +2500,16 @@
   },
   {
    "from": "file:ll1/table.go",
+   "to": "func:ll1.Table.recordConflict",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/table.go",
+   "to": "type:ll1.ConflictCell",
+   "kind": "contains"
+  },
+  {
+   "from": "file:ll1/table.go",
    "to": "type:ll1.Table",
    "kind": "contains"
   },
@@ -2183,6 +2531,46 @@
   {
    "from": "func:cmd/analisador.app.analyze",
    "to": "func:ll1.Parse",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.choosePreset",
+   "to": "func:cmd/analisador.app.print",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.choosePreset",
+   "to": "func:cmd/analisador.app.readLine",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.choosePreset",
+   "to": "func:cmd/analisador.app.section",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.choosePreset",
+   "to": "func:cmd/analisador.app.use",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.choosePreset",
+   "to": "func:cmd/analisador.palette.paint",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.choosePreset",
+   "to": "func:cmd/analisador.sourceText",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.choosePreset",
+   "to": "func:ll1.PresetGroup.Label",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.choosePreset",
+   "to": "func:ll1.Presets",
    "kind": "calls"
   },
   {
@@ -2256,6 +2644,16 @@
    "kind": "calls"
   },
   {
+   "from": "func:cmd/analisador.app.showGrammar",
+   "to": "func:cmd/analisador.palette.paint",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.app.showGrammar",
+   "to": "func:cmd/analisador.sourceText",
+   "kind": "calls"
+  },
+  {
    "from": "func:cmd/analisador.app.showSets",
    "to": "func:cmd/analisador.app.print",
    "kind": "calls"
@@ -2326,6 +2724,11 @@
    "kind": "calls"
   },
   {
+   "from": "func:cmd/analisador.app.use",
+   "to": "func:ll1.BuildTable",
+   "kind": "calls"
+  },
+  {
    "from": "func:cmd/analisador.app.waitForEnter",
    "to": "func:cmd/analisador.app.readLine",
    "kind": "calls"
@@ -2372,6 +2775,11 @@
   },
   {
    "from": "func:cmd/analisador.run",
+   "to": "func:cmd/analisador.app.use",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/analisador.run",
    "to": "func:cmd/analisador.app.waitForEnter",
    "kind": "calls"
   },
@@ -2392,12 +2800,7 @@
   },
   {
    "from": "func:cmd/analisador.run",
-   "to": "func:ll1.BuildTable",
-   "kind": "calls"
-  },
-  {
-   "from": "func:cmd/analisador.run",
-   "to": "func:ll1.Default",
+   "to": "func:ll1.PresetByID",
    "kind": "calls"
   },
   {
@@ -2621,6 +3024,21 @@
    "kind": "calls"
   },
   {
+   "from": "func:cmd/wasm.grammarValue",
+   "to": "func:ll1.Grammar.FirstOfSequence",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.loadPresets",
+   "to": "func:ll1.BuildTable",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.loadPresets",
+   "to": "func:ll1.Presets",
+   "kind": "calls"
+  },
+  {
    "from": "func:cmd/wasm.main",
    "to": "func:cmd/wasm.grammarValue",
    "kind": "calls"
@@ -2628,6 +3046,16 @@
   {
    "from": "func:cmd/wasm.main",
    "to": "func:cmd/wasm.parseValue",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.main",
+   "to": "func:cmd/wasm.presetsValue",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.main",
+   "to": "func:cmd/wasm.selected",
    "kind": "calls"
   },
   {
@@ -2666,6 +3094,16 @@
    "kind": "calls"
   },
   {
+   "from": "func:cmd/wasm.presetsValue",
+   "to": "func:cmd/wasm.toJSON",
+   "kind": "calls"
+  },
+  {
+   "from": "func:cmd/wasm.presetsValue",
+   "to": "func:ll1.PresetGroup.Label",
+   "kind": "calls"
+  },
+  {
    "from": "func:cmd/wasm.setsValue",
    "to": "func:cmd/wasm.toJSON",
    "kind": "calls"
@@ -2683,16 +3121,6 @@
   {
    "from": "func:cmd/wasm.tableValue",
    "to": "func:cmd/wasm.toJSON",
-   "kind": "calls"
-  },
-  {
-   "from": "func:cmd/wasm.tableValue",
-   "to": "func:ll1.Table.Production",
-   "kind": "calls"
-  },
-  {
-   "from": "func:cmd/wasm.toJSON",
-   "to": "func:ll1.LexicalError.Error",
    "kind": "calls"
   },
   {
@@ -2856,6 +3284,21 @@
    "kind": "calls"
   },
   {
+   "from": "func:ll1.Grammar.isKeyword",
+   "to": "func:ll1.Grammar.IsTerminal",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.punctuation",
+   "to": "func:ll1.isDigit",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Grammar.punctuation",
+   "to": "func:ll1.isLetter",
+   "kind": "calls"
+  },
+  {
    "from": "func:ll1.LexicalError.Error",
    "to": "func:ll1.LexicalError.Detail",
    "kind": "calls"
@@ -2877,7 +3320,7 @@
   },
   {
    "from": "func:ll1.Parse",
-   "to": "func:ll1.Tokenize",
+   "to": "func:ll1.TokenizeFor",
    "kind": "calls"
   },
   {
@@ -2902,6 +3345,11 @@
   },
   {
    "from": "func:ll1.Parse",
+   "to": "func:ll1.refuseConflicts",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Parse",
    "to": "func:ll1.reject",
    "kind": "calls"
   },
@@ -2911,23 +3359,73 @@
    "kind": "calls"
   },
   {
+   "from": "func:ll1.PresetByID",
+   "to": "func:ll1.Presets",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Presets",
+   "to": "func:ll1.Default",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Presets",
+   "to": "func:ll1.grammarFrom",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Table.place",
+   "to": "func:ll1.Table.recordConflict",
+   "kind": "calls"
+  },
+  {
    "from": "func:ll1.Tokenize",
+   "to": "func:ll1.Default",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.Tokenize",
+   "to": "func:ll1.TokenizeFor",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.TokenizeFor",
+   "to": "func:ll1.Grammar.IsTerminal",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.TokenizeFor",
+   "to": "func:ll1.Grammar.isKeyword",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.TokenizeFor",
    "to": "func:ll1.isDigit",
    "kind": "calls"
   },
   {
-   "from": "func:ll1.Tokenize",
+   "from": "func:ll1.TokenizeFor",
    "to": "func:ll1.isLetter",
    "kind": "calls"
   },
   {
-   "from": "func:ll1.Tokenize",
-   "to": "func:ll1.isOperator",
+   "from": "func:ll1.TokenizeFor",
+   "to": "func:ll1.isSpace",
    "kind": "calls"
   },
   {
-   "from": "func:ll1.Tokenize",
-   "to": "func:ll1.isSpace",
+   "from": "func:ll1.grammarFrom",
+   "to": "func:ll1.Grammar.IsNonTerminal",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.grammarFrom",
+   "to": "func:ll1.Grammar.IsTerminal",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.grammarFrom",
+   "to": "func:ll1.withoutInnerEpsilon",
    "kind": "calls"
   },
   {
@@ -2942,7 +3440,7 @@
   },
   {
    "from": "func:ll1.lexicalFailure",
-   "to": "func:ll1.Tokenize",
+   "to": "func:ll1.TokenizeFor",
    "kind": "calls"
   },
   {
@@ -2952,7 +3450,32 @@
   },
   {
    "from": "func:ll1.mutate",
+   "to": "func:ll1.Grammar.IsTerminal",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.mutate",
+   "to": "func:ll1.Grammar.punctuation",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.mutate",
+   "to": "func:ll1.contains",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.mutate",
    "to": "func:ll1.insertAt",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.refuseConflicts",
+   "to": "func:ll1.TokenizeFor",
+   "kind": "calls"
+  },
+  {
+   "from": "func:ll1.refuseConflicts",
+   "to": "func:ll1.kinds",
    "kind": "calls"
   },
   {
@@ -3022,6 +3545,11 @@
   },
   {
    "from": "pkg:ll1",
+   "to": "file:ll1/presets.go",
+   "kind": "contains"
+  },
+  {
+   "from": "pkg:ll1",
    "to": "file:ll1/sets.go",
    "kind": "contains"
   },
@@ -3033,6 +3561,11 @@
   {
    "from": "type:cmd/analisador.app",
    "to": "func:cmd/analisador.app.analyze",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/analisador.app",
+   "to": "func:cmd/analisador.app.choosePreset",
    "kind": "method"
   },
   {
@@ -3088,6 +3621,11 @@
   {
    "from": "type:cmd/analisador.app",
    "to": "func:cmd/analisador.app.typeSentence",
+   "kind": "method"
+  },
+  {
+   "from": "type:cmd/analisador.app",
+   "to": "func:cmd/analisador.app.use",
    "kind": "method"
   },
   {
@@ -3217,12 +3755,22 @@
   },
   {
    "from": "type:ll1.Grammar",
+   "to": "func:ll1.Grammar.isKeyword",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Grammar",
    "to": "func:ll1.Grammar.ordered",
    "kind": "method"
   },
   {
    "from": "type:ll1.Grammar",
    "to": "func:ll1.Grammar.productionHeights",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Grammar",
+   "to": "func:ll1.Grammar.punctuation",
    "kind": "method"
   },
   {
@@ -3233,6 +3781,11 @@
   {
    "from": "type:ll1.LexicalError",
    "to": "func:ll1.LexicalError.Error",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.PresetGroup",
+   "to": "func:ll1.PresetGroup.Label",
    "kind": "method"
   },
   {
@@ -3253,6 +3806,11 @@
   {
    "from": "type:ll1.Table",
    "to": "func:ll1.Table.place",
+   "kind": "method"
+  },
+  {
+   "from": "type:ll1.Table",
+   "to": "func:ll1.Table.recordConflict",
    "kind": "method"
   },
   {

@@ -6,10 +6,14 @@ const WASM_READY_TIMEOUT_MS = 5000;
 const WASM_READY_POLL_MS = 25;
 const END_MARKER = '$';
 const EPSILON = 'ε';
-// Parsed to build the leftmost derivation of "id + num * id" shown in the grammar section.
+// Analisada para montar a derivação mais à esquerda de "id + num * id" da seção da gramática.
 const DERIVATION_SAMPLE = 'x + 1 * y';
-// The selected grammar lives in the URL hash as "#g=<preset id>".
-const HASH_PREFIX = '#g=';
+// A gramática escolhida fica na query, "?g=<id>": o hash é dos links de seção,
+// que o trocam a cada clique.
+const GRAMMAR_PARAM = 'g';
+// Links antigos guardavam a gramática no hash.
+const LEGACY_HASH_PREFIX = '#g=';
+const MAX_SENTENCE_LENGTH = 200;
 
 const TEXT = Object.freeze({
   accepted: 'ACEITA',
@@ -23,7 +27,7 @@ const TEXT = Object.freeze({
   source: 'Fonte: ',
   adapted: 'adaptado para LL(1)',
   examplePrefix: 'ex.: ',
-  terminalsNote: (terminals) => `Até 200 caracteres. Terminais desta gramática: ${terminals.join(' ')}`,
+  terminalsNote: (terminals) => `Até ${MAX_SENTENCE_LENGTH} caracteres. Terminais desta gramática: ${terminals.join(' ')}`,
   loadFailed: 'Não foi possível carregar o analisador. Recarregue a página.',
   stepOf: (current, total) => `Passo ${current} de ${total}`,
   ruleOk: 'satisfeita',
@@ -37,7 +41,7 @@ const $ = (id) => document.getElementById(id);
 const app = {
   presets: [],
   preset: null,
-  // Texts of the page as written for the assignment grammar, restored when it is selected again.
+  // Textos da página escritos para a gramática do trabalho, devolvidos quando ela volta a ser escolhida.
   defaults: null,
   grammar: null,
   nonTerminals: new Set(),
@@ -49,7 +53,7 @@ const app = {
   timer: null,
 };
 
-// ---------- DOM helpers (text is always set with textContent) ----------
+// ---------- Ajudantes de DOM (texto sempre por textContent, nunca HTML) ----------
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -58,7 +62,7 @@ function el(tag, className, text) {
   return node;
 }
 
-// The Go side writes productions with "->"; the screen uses the arrow symbol.
+// O Go escreve as produções com "->"; a tela usa a seta.
 function arrowText(text) {
   return text.replaceAll('->', '→');
 }
@@ -87,7 +91,7 @@ function productionNode(head, body) {
   return node;
 }
 
-// ---------- Static sections ----------
+// ---------- Seções fixas ----------
 
 function setNode(symbols) {
   const node = el('span', 'set');
@@ -105,7 +109,7 @@ function setNode(symbols) {
   return node;
 }
 
-// Grouped form ("E' → + T E' | - T E' | ε"), heads padded so the arrows line up.
+// Forma agrupada ("E' → + T E' | - T E' | ε"), com espaços depois das cabeças para as setas alinharem.
 function renderGrouped() {
   const box = $('grouped');
   const width = Math.max(...app.grammar.nonTerminals.map((head) => head.length));
@@ -134,31 +138,19 @@ function renderGrammar() {
   $('def-count').textContent = String(app.grammar.productions.length);
 }
 
-// ---------- LL(1) condition per rule ----------
+// ---------- Condição LL(1) por regra ----------
 
-// Display order for sets: terminals as the grammar lists them, then $ and ε.
+// Ordem de exibição dos conjuntos, a mesma do Go: terminais na ordem da gramática, depois $ e ε.
 function sortSymbols(symbols) {
   const order = [...app.grammar.terminals, END_MARKER, EPSILON];
   return [...symbols].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-}
-
-function firstOfSequence(symbols, first) {
-  const out = new Set();
-  for (const symbol of symbols) {
-    if (symbol === EPSILON) continue;
-    const symbolFirst = app.nonTerminals.has(symbol) ? first.get(symbol) : [symbol];
-    for (const item of symbolFirst) if (item !== EPSILON) out.add(item);
-    if (!symbolFirst.includes(EPSILON)) return sortSymbols(out);
-  }
-  out.add(EPSILON);
-  return sortSymbols(out);
 }
 
 function isEmptyProduction(production) {
   return production.body.length === 1 && production.body[0] === EPSILON;
 }
 
-// "FIRST(α)", or "(FIRST(α) ∪ FIRST(β))" for several bodies.
+// "FIRST(α)", ou "(FIRST(α) ∪ FIRST(β))" quando há vários corpos.
 function firstCall(bodies) {
   const node = el('span');
   if (bodies.length > 1) node.append('(');
@@ -172,7 +164,7 @@ function firstCall(bodies) {
   return node;
 }
 
-// Renders "<left> = A ∩ B = result" and reports whether A and B are disjoint.
+// Desenha "<esquerda> = A ∩ B = resultado" e diz se A e B não têm símbolo em comum.
 function checkLine(left, setA, setB) {
   const shared = setA.filter((symbol) => setB.includes(symbol));
   const result = setNode(shared);
@@ -182,30 +174,32 @@ function checkLine(left, setA, setB) {
   return { line, disjoint: shared.length === 0 };
 }
 
-function ruleCheck(head, first, follow) {
+// O FIRST de cada corpo (production.first) já vem calculado pelo Go.
+function ruleCheck(head, follow) {
   const alternatives = app.grammar.productions.filter((production) => production.head === head);
-  const firsts = new Map(alternatives.map((production) => [production, firstOfSequence(production.body, first)]));
   const lines = [];
   let ok = true;
   if (alternatives.length === 1) lines.push(el('p', 'check-note', TEXT.singleProduction(alternatives[0].number)));
 
-  // Condition 1: alternatives that start with a symbol must start differently.
+  // Condição 1: alternativas que começam por algum símbolo têm de começar diferente,
+  // senão um único token não decide qual delas usar.
   const choices = alternatives.filter((production) => !isEmptyProduction(production));
   choices.forEach((a, i) => {
     for (const b of choices.slice(i + 1)) {
       const left = el('span');
       left.append(firstCall([a.body]), ' ∩ ', firstCall([b.body]));
-      const check = checkLine(left, firsts.get(a), firsts.get(b));
+      const check = checkLine(left, a.first, b.first);
       lines.push(check.line);
       ok = ok && check.disjoint;
     }
   });
 
-  // Condition 2: when one alternative derives ε, the others must not start with what follows A.
-  for (const nullable of alternatives.filter((production) => firsts.get(production).includes(EPSILON))) {
+  // Condição 2: se uma alternativa deriva ε, as outras não podem começar pelo que vem
+  // depois de A (FOLLOW(A)), senão o analisador não sabe se aplica a que deriva ε.
+  for (const nullable of alternatives.filter((production) => production.first.includes(EPSILON))) {
     const others = alternatives.filter((production) => production !== nullable);
     if (others.length === 0) continue;
-    const othersFirst = sortSymbols(new Set(others.flatMap((production) => firsts.get(production))));
+    const othersFirst = sortSymbols(new Set(others.flatMap((production) => production.first)));
     const left = el('span');
     left.append(firstCall(others.map((production) => production.body)), ' ∩ FOLLOW(', symbolNode(head), ')');
     const check = checkLine(left, othersFirst, follow.get(head));
@@ -222,12 +216,11 @@ function ruleCheck(head, first, follow) {
 
 function renderChecks(rows) {
   $('ll1-checks').replaceChildren();
-  const first = new Map(rows.map((row) => [row.nonTerminal, row.first]));
   const follow = new Map(rows.map((row) => [row.nonTerminal, row.follow]));
-  for (const head of app.grammar.nonTerminals) $('ll1-checks').append(ruleCheck(head, first, follow));
+  for (const head of app.grammar.nonTerminals) $('ll1-checks').append(ruleCheck(head, follow));
 }
 
-// ---------- Leftmost derivation ----------
+// ---------- Derivação mais à esquerda ----------
 
 function productionAt(cellRef) {
   const row = app.table.rows.find((candidate) => candidate.nonTerminal === cellRef.nonTerminal);
@@ -250,11 +243,11 @@ function derivationLine(form, sign, number) {
   return item;
 }
 
-// A predictive parser always expands the leftmost non-terminal, so the
-// productions it applies, in order, are exactly the leftmost derivation.
+// O analisador preditivo sempre expande o não terminal mais à esquerda, então as
+// produções que ele aplica, em ordem, são exatamente a derivação mais à esquerda.
 function renderDerivation() {
   const result = JSON.parse(globalThis.ll1.parse(DERIVATION_SAMPLE, app.preset.id));
-  const applied = (result.steps || []).filter((step) => step.cell).map((step) => productionAt(step.cell));
+  const applied = result.steps.filter((step) => step.cell).map((step) => productionAt(step.cell));
   const list = $('derivation');
   list.replaceChildren();
   let form = [app.grammar.start];
@@ -310,7 +303,7 @@ function buildParseTable(table, compact) {
       td.dataset.nonTerminal = row.nonTerminal;
       td.dataset.column = cell.column;
       if (cell.conflicts) {
-        // Every production that claims the cell, so the clash is visible.
+        // Todas as produções que pedem a célula, para o conflito ficar visível.
         td.classList.add('conflict');
         for (const number of cell.conflicts) {
           const production = app.grammar.productions.find((p) => p.number === number);
@@ -354,7 +347,7 @@ function highlightCell(cellRef) {
   }
 }
 
-// Scrolls only the table's own box, never the page, so the used cell stays visible.
+// Rola só a caixa da tabela, nunca a página, para a célula usada ficar à vista.
 function centerInScroll(cell) {
   const box = cell.closest('.scroll');
   const boxRect = box.getBoundingClientRect();
@@ -363,10 +356,14 @@ function centerInScroll(cell) {
   box.scrollLeft += cellRect.left - boxRect.left - (boxRect.width - cellRect.width) / 2;
 }
 
-// ---------- Analysis ----------
+// ---------- Análise ----------
 
+// A entrada do passo é o fim da lista de tokens, então a diferença dá o token atual.
+// No erro léxico a entrada tem os tokens lidos mais o caractere inválido e "$", que
+// não estão nos tokens, e a conta fica negativa: aí todos os lidos contam como consumidos.
 function tokenIndexForStep(step) {
-  return app.result.tokens.length - step.input.length;
+  const index = app.result.tokens.length - step.input.length;
+  return index < 0 ? app.result.tokens.length : index;
 }
 
 function renderTokens() {
@@ -404,8 +401,8 @@ function stackNode(symbols, highlightTop) {
   return node;
 }
 
-// Each row is built once per result and reused, so moving through the steps
-// only re-attaches existing rows instead of rebuilding every symbol.
+// Cada linha é montada uma vez por resultado e reaproveitada: andar pelos passos só
+// recoloca linhas prontas em vez de refazer cada símbolo.
 function stepRow(index) {
   if (app.rows[index]) return app.rows[index];
   const steps = app.result.steps;
@@ -433,8 +430,7 @@ function renderStepRows() {
   }
   $('steps-table').tBodies[0].replaceChildren(...rows);
   const scroll = $('steps-scroll');
-  if (app.mode === MODE.STEP) scroll.scrollTop = scroll.scrollHeight;
-  else scroll.scrollTop = 0;
+  scroll.scrollTop = stepMode ? scroll.scrollHeight : 0;
 }
 
 function renderStepView() {
@@ -484,7 +480,7 @@ function setMode(mode) {
   app.mode = mode;
   if (mode === MODE.STEP) app.current = 0;
   renderAnalysis();
-  // Bring the step controls and the current state into view, not just the button.
+  // Traz para a vista os controles e o estado atual, não só o botão.
   if (mode === MODE.STEP) $('view-toolbar').scrollIntoView({ block: 'start', behavior: 'smooth' });
 }
 
@@ -494,10 +490,10 @@ function showResult(result) {
   app.current = 0;
   const banner = $('banner');
   banner.className = 'banner ' + (result.accepted ? 'ok' : 'bad');
-  // Reading offsetWidth restarts the entry animation for every new result.
+  // Ler offsetWidth reinicia a animação de entrada a cada novo resultado.
   void banner.offsetWidth;
   banner.classList.add('shown');
-  // A grammar with conflicts is never run, so its sentences are not "rejected".
+  // Uma gramática com conflitos nunca roda, então as sentenças dela não são "rejeitadas".
   const verdict = result.accepted ? TEXT.accepted : (app.preset.isLL1 ? TEXT.rejected : TEXT.refused);
   $('banner-verdict').textContent = (result.accepted ? '✔ ' : '✘ ') + verdict;
   $('banner-message').textContent = result.message;
@@ -508,10 +504,7 @@ function showResult(result) {
 function analyze() {
   stopPlaying();
   const input = $('sentence').value;
-  const result = JSON.parse(globalThis.ll1.parse(input, app.preset.id));
-  result.tokens = result.tokens || [];
-  result.steps = result.steps || [];
-  showResult(result);
+  showResult(JSON.parse(globalThis.ll1.parse(input, app.preset.id)));
   $('banner').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
@@ -527,7 +520,7 @@ function reset() {
   $('sentence').focus({ preventScroll: true });
 }
 
-// ---------- Step navigation ----------
+// ---------- Navegação pelos passos ----------
 
 function goToStep(index) {
   const last = app.result.steps.length - 1;
@@ -548,25 +541,29 @@ function togglePlay() {
     return;
   }
   const last = app.result.steps.length - 1;
+  // No último passo, reproduzir recomeça do primeiro.
   if (app.current >= last) goToStep(0);
   $('btn-play').textContent = TEXT.pause;
   app.timer = setInterval(() => {
-    if (app.current >= last) {
-      stopPlaying();
-      return;
-    }
     goToStep(app.current + 1);
     if (app.current >= last) stopPlaying();
   }, PLAY_INTERVAL_MS);
 }
 
-// ---------- Grammar choice ----------
+// ---------- Escolha da gramática ----------
 
-function presetFromHash() {
-  const hash = location.hash;
-  if (!hash.startsWith(HASH_PREFIX)) return null;
-  const id = decodeURIComponent(hash.slice(HASH_PREFIX.length));
+function presetFromUrl() {
+  const id = new URLSearchParams(location.search).get(GRAMMAR_PARAM);
   return app.presets.find((preset) => preset.id === id) || null;
+}
+
+// Troca um link antigo "#g=<id>" por "?g=<id>", uma vez, ao abrir a página.
+function moveLegacyHash() {
+  if (!location.hash.startsWith(LEGACY_HASH_PREFIX)) return;
+  const url = new URL(location.href);
+  url.searchParams.set(GRAMMAR_PARAM, location.hash.slice(LEGACY_HASH_PREFIX.length));
+  url.hash = '';
+  history.replaceState(null, '', url);
 }
 
 function defaultPreset() {
@@ -589,7 +586,7 @@ function renderPresetOptions() {
   }
 }
 
-// "Fonte: <autor>, <título>" linked to the source, plus the adaptation note.
+// "Fonte: <autor>, <título>" com link para a fonte, mais o aviso de adaptação.
 function fillSource(node, preset) {
   node.replaceChildren();
   node.hidden = !preset.author;
@@ -626,8 +623,8 @@ function renderPresetTexts() {
   for (const sentence of [...preset.examples, ...preset.invalidExamples]) examples.append(' ', exampleButton(sentence));
 }
 
-// Loads one preset: grammar, sets, LL(1) checks, table and examples; the
-// previous analysis is cleared.
+// Carrega uma gramática pronta: gramática, conjuntos, condição LL(1), tabela e
+// exemplos; a análise anterior é apagada.
 function selectPreset(preset) {
   const api = globalThis.ll1;
   app.preset = preset;
@@ -647,17 +644,15 @@ function selectPreset(preset) {
 
 function onPresetChange() {
   const preset = app.presets.find((candidate) => candidate.id === $('preset').value) || defaultPreset();
-  const url = preset.isDefault ? location.pathname + location.search : HASH_PREFIX + encodeURIComponent(preset.id);
+  // A gramática do trabalho fica com o endereço limpo, sem ?g=.
+  const url = new URL(location.href);
+  if (preset.isDefault) url.searchParams.delete(GRAMMAR_PARAM);
+  else url.searchParams.set(GRAMMAR_PARAM, preset.id);
   history.replaceState(null, '', url);
   selectPreset(preset);
 }
 
-function onHashChange() {
-  const preset = presetFromHash();
-  if (preset && preset !== app.preset) selectPreset(preset);
-}
-
-// ---------- Wiring ----------
+// ---------- Ligação dos eventos ----------
 
 function setSentence(text) {
   $('sentence').value = text;
@@ -673,7 +668,6 @@ function wireEvents() {
   $('btn-invalid').addEventListener('click', () => setSentence(globalThis.ll1.generateInvalid(app.preset.id)));
   $('btn-clear').addEventListener('click', reset);
   $('preset').addEventListener('change', onPresetChange);
-  window.addEventListener('hashchange', onHashChange);
   $('mode-step').addEventListener('click', () => setMode(MODE.STEP));
   $('mode-full').addEventListener('click', () => setMode(MODE.FULL));
   $('btn-prev').addEventListener('click', () => { stopPlaying(); goToStep(app.current - 1); });
@@ -722,8 +716,10 @@ async function start() {
       note: $('sentence-note').textContent,
       examplesLabel: $('examples').textContent.trim(),
     };
+    $('sentence').maxLength = MAX_SENTENCE_LENGTH;
     renderPresetOptions();
-    selectPreset(presetFromHash() || defaultPreset());
+    moveLegacyHash();
+    selectPreset(presetFromUrl() || defaultPreset());
     wireEvents();
     enableControls();
     $('loading').classList.add('done');
