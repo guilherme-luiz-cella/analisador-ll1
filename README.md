@@ -23,9 +23,20 @@ T' -> * F T' | / F T' | ε
 F  -> ( E ) | id | num
 ```
 
-Símbolo inicial `E`. Terminais: `id num + - * / ( )`, fim da entrada `$`. A gramática está fatorada, sem recursão à esquerda e não é ambígua.
+A linguagem reconhecida é a das expressões aritméticas com identificadores, números inteiros, os operadores `+ - * /` e parênteses.
 
-Produções numeradas (os números aparecem na tabela):
+### Definição formal
+
+G = (N, T, P, S), com:
+
+- N = { E, E', T, T', F } (não terminais)
+- T = { id, num, +, -, *, /, (, ) } (terminais; `$` marca o fim da entrada)
+- P = as 11 produções numeradas abaixo
+- S = E (símbolo inicial)
+
+### Produções
+
+Os números são os que aparecem nas células da tabela de parsing.
 
 | Nº | Produção |
 |---|---|
@@ -40,6 +51,73 @@ Produções numeradas (os números aparecem na tabela):
 | 9 | F -> ( E ) |
 | 10 | F -> id |
 | 11 | F -> num |
+
+### Por que é LL(1)
+
+**Fatorada.** Nenhum par de alternativas do mesmo não terminal começa pelo mesmo símbolo: `E'` escolhe por `+` ou `-`, `T'` por `*` ou `/`, `F` por `(`, `id` ou `num`. Olhar um único token basta para decidir.
+
+**Sem recursão à esquerda.** A gramática usual de expressões é recursiva à esquerda:
+
+```
+E -> E + T | E - T | T
+T -> T * F | T / F | F
+F -> ( E ) | id | num
+```
+
+Um analisador descendente que expande `E -> E + T` volta a ter `E` no topo da pilha sem consumir nada e entra em laço infinito. A regra `A -> A α | β` é trocada por `A -> β A'` e `A' -> α A' | ε`. Aplicada a `E` (com `α = + T` ou `- T`, `β = T`) e a `T` (com `α = * F` ou `/ F`, `β = F`), ela dá:
+
+```
+E  -> T E'
+E' -> + T E' | - T E' | ε
+T  -> F T'
+T' -> * F T' | / F T' | ε
+```
+
+**Não ambígua.** Toda gramática LL(1) é não ambígua, e a tabela de parsing não tem nenhuma célula com duas produções. A precedência está nos níveis: `+` e `-` ficam em `E'`, acima de `*` e `/`, que ficam em `T'`. Em `a + b * c`, a multiplicação fica mais funda na árvore e é feita primeiro. A associatividade continua à esquerda: `E'` e `T'` geram os operadores da esquerda para a direita, e `a - b - c` vale `(a - b) - c`, como na gramática original.
+
+### Condição LL(1) em cada regra
+
+Para cada `A -> α | β`: FIRST(α) ∩ FIRST(β) = ∅. Quando uma alternativa deriva ε: FIRST(outras alternativas) ∩ FOLLOW(A) = ∅. Os conjuntos usados são os da seção seguinte.
+
+| Regra | Verificação | Resultado |
+|---|---|---|
+| E | uma única produção (1): não há escolha | satisfeita |
+| E' | FIRST(+ T E') ∩ FIRST(- T E') = { + } ∩ { - } | ∅ |
+| E' | (FIRST(+ T E') ∪ FIRST(- T E')) ∩ FOLLOW(E') = { +, - } ∩ { ), $ } | ∅ |
+| T | uma única produção (5): não há escolha | satisfeita |
+| T' | FIRST(* F T') ∩ FIRST(/ F T') = { * } ∩ { / } | ∅ |
+| T' | (FIRST(* F T') ∪ FIRST(/ F T')) ∩ FOLLOW(T') = { *, / } ∩ { +, -, ), $ } | ∅ |
+| F | FIRST(( E )) ∩ FIRST(id) = { ( } ∩ { id } | ∅ |
+| F | FIRST(( E )) ∩ FIRST(num) = { ( } ∩ { num } | ∅ |
+| F | FIRST(id) ∩ FIRST(num) = { id } ∩ { num } | ∅ |
+
+A versão web calcula esta mesma verificação a partir dos conjuntos que o programa gera.
+
+### Requisitos mínimos do trabalho
+
+- Pelo menos 4 regras: são 5 não terminais (E, E', T, T', F) e 11 produções.
+- Regras com 2 ou mais produções: E', T' e F, com 3 cada.
+- Regras com produção vazia: E' (produção 4) e T' (produção 8).
+- Fatorada, sem recursão à esquerda e não ambígua, como mostrado acima.
+
+### Derivação mais à esquerda de `id + num * id`
+
+O número à direita é a produção aplicada ao não terminal mais à esquerda. É a mesma sequência que o analisador aplica ao reconhecer `x + 1 * y`.
+
+```
+E
+=> T E'                 (1)
+=> F T' E'              (5)
+=> id T' E'             (10)
+=> id E'                (8)
+=> id + T E'            (2)
+=> id + F T' E'         (5)
+=> id + num T' E'       (11)
+=> id + num * F T' E'   (6)
+=> id + num * id T' E'  (10)
+=> id + num * id E'     (8)
+=> id + num * id        (4)
+```
 
 ## Conjuntos FIRST e FOLLOW
 

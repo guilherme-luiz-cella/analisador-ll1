@@ -6,6 +6,8 @@ const WASM_READY_TIMEOUT_MS = 5000;
 const WASM_READY_POLL_MS = 25;
 const END_MARKER = '$';
 const EPSILON = 'ε';
+// Parsed to build the leftmost derivation of "id + num * id" shown in the grammar section.
+const DERIVATION_SAMPLE = 'x + 1 * y';
 
 const TEXT = Object.freeze({
   accepted: 'ACEITA',
@@ -17,6 +19,10 @@ const TEXT = Object.freeze({
   conflicts: 'Conflitos encontrados: ',
   loadFailed: 'Não foi possível carregar o analisador. Recarregue a página.',
   stepOf: (current, total) => `Passo ${current} de ${total}`,
+  ruleOk: 'satisfeita',
+  ruleConflict: 'conflito',
+  singleProduction: (number) => `Uma única produção (${number}): não há escolha a fazer.`,
+  emptySet: '∅',
 });
 
 const $ = (id) => document.getElementById(id);
@@ -24,7 +30,9 @@ const $ = (id) => document.getElementById(id);
 const app = {
   grammar: null,
   nonTerminals: new Set(),
+  table: null,
   result: null,
+  rows: [],
   mode: MODE.FULL,
   current: 0,
   timer: null,
@@ -70,6 +78,36 @@ function productionNode(head, body) {
 
 // ---------- Static sections ----------
 
+function setNode(symbols) {
+  const node = el('span', 'set');
+  if (symbols.length === 0) {
+    node.textContent = TEXT.emptySet;
+    return node;
+  }
+  node.append(el('span', 'arrow', '{ '));
+  for (const symbol of symbols) {
+    const item = el('span', 'set-item');
+    item.append(symbolNode(symbol));
+    node.append(item);
+  }
+  node.append(el('span', 'arrow', ' }'));
+  return node;
+}
+
+// Grouped form ("E' → + T E' | - T E' | ε"), heads padded so the arrows line up.
+function renderGrouped() {
+  const box = $('grouped');
+  const width = Math.max(...app.grammar.nonTerminals.map((head) => head.length));
+  app.grammar.nonTerminals.forEach((head, line) => {
+    if (line > 0) box.append('\n');
+    box.append(symbolNode(head), ' '.repeat(width - head.length), el('span', 'arrow', ' → '));
+    app.grammar.productions.filter((production) => production.head === head).forEach((production, index) => {
+      if (index > 0) box.append(el('span', 'arrow', ' | '));
+      appendSymbols(box, production.body);
+    });
+  });
+}
+
 function renderGrammar() {
   const list = $('productions');
   for (const production of app.grammar.productions) {
@@ -77,7 +115,142 @@ function renderGrammar() {
     item.append(el('span', 'prod-number', String(production.number)), productionNode(production.head, production.body));
     list.append(item);
   }
-  $('grouped').textContent = app.grammar.grouped.join('\n').replaceAll('->', '→');
+  renderGrouped();
+  $('def-nonterminals').append(setNode(app.grammar.nonTerminals));
+  $('def-terminals').append(setNode(app.grammar.terminals));
+  $('def-start').append(symbolNode(app.grammar.start));
+  $('def-count').textContent = String(app.grammar.productions.length);
+}
+
+// ---------- LL(1) condition per rule ----------
+
+// Display order for sets: terminals as the grammar lists them, then $ and ε.
+function sortSymbols(symbols) {
+  const order = [...app.grammar.terminals, END_MARKER, EPSILON];
+  return [...symbols].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+}
+
+function firstOfSequence(symbols, first) {
+  const out = new Set();
+  for (const symbol of symbols) {
+    if (symbol === EPSILON) continue;
+    const symbolFirst = app.nonTerminals.has(symbol) ? first.get(symbol) : [symbol];
+    for (const item of symbolFirst) if (item !== EPSILON) out.add(item);
+    if (!symbolFirst.includes(EPSILON)) return sortSymbols(out);
+  }
+  out.add(EPSILON);
+  return sortSymbols(out);
+}
+
+function isEmptyProduction(production) {
+  return production.body.length === 1 && production.body[0] === EPSILON;
+}
+
+// "FIRST(α)", or "(FIRST(α) ∪ FIRST(β))" for several bodies.
+function firstCall(bodies) {
+  const node = el('span');
+  if (bodies.length > 1) node.append('(');
+  bodies.forEach((body, index) => {
+    if (index > 0) node.append(' ∪ ');
+    node.append('FIRST(');
+    appendSymbols(node, body);
+    node.append(')');
+  });
+  if (bodies.length > 1) node.append(')');
+  return node;
+}
+
+// Renders "<left> = A ∩ B = result" and reports whether A and B are disjoint.
+function checkLine(left, setA, setB) {
+  const shared = setA.filter((symbol) => setB.includes(symbol));
+  const result = setNode(shared);
+  result.classList.add('result');
+  const line = el('p', 'check-line');
+  line.append(left, ' = ', setNode(setA), ' ∩ ', setNode(setB), ' = ', result);
+  return { line, disjoint: shared.length === 0 };
+}
+
+function ruleCheck(head, first, follow) {
+  const alternatives = app.grammar.productions.filter((production) => production.head === head);
+  const firsts = new Map(alternatives.map((production) => [production, firstOfSequence(production.body, first)]));
+  const lines = [];
+  let ok = true;
+  if (alternatives.length === 1) lines.push(el('p', 'check-note', TEXT.singleProduction(alternatives[0].number)));
+
+  // Condition 1: alternatives that start with a symbol must start differently.
+  const choices = alternatives.filter((production) => !isEmptyProduction(production));
+  choices.forEach((a, i) => {
+    for (const b of choices.slice(i + 1)) {
+      const left = el('span');
+      left.append(firstCall([a.body]), ' ∩ ', firstCall([b.body]));
+      const check = checkLine(left, firsts.get(a), firsts.get(b));
+      lines.push(check.line);
+      ok = ok && check.disjoint;
+    }
+  });
+
+  // Condition 2: when one alternative derives ε, the others must not start with what follows A.
+  for (const nullable of alternatives.filter((production) => firsts.get(production).includes(EPSILON))) {
+    const others = alternatives.filter((production) => production !== nullable);
+    if (others.length === 0) continue;
+    const othersFirst = sortSymbols(new Set(others.flatMap((production) => firsts.get(production))));
+    const left = el('span');
+    left.append(firstCall(others.map((production) => production.body)), ' ∩ FOLLOW(', symbolNode(head), ')');
+    const check = checkLine(left, othersFirst, follow.get(head));
+    lines.push(check.line);
+    ok = ok && check.disjoint;
+  }
+
+  const box = el('div', 'check ' + (ok ? 'ok' : 'bad'));
+  const header = el('div', 'check-head');
+  header.append(symbolNode(head), el('span', 'tag ' + (ok ? 'ok' : 'bad'), ok ? TEXT.ruleOk : TEXT.ruleConflict));
+  box.append(header, ...lines);
+  return box;
+}
+
+function renderChecks(rows) {
+  const first = new Map(rows.map((row) => [row.nonTerminal, row.first]));
+  const follow = new Map(rows.map((row) => [row.nonTerminal, row.follow]));
+  for (const head of app.grammar.nonTerminals) $('ll1-checks').append(ruleCheck(head, first, follow));
+}
+
+// ---------- Leftmost derivation ----------
+
+function productionAt(cellRef) {
+  const row = app.table.rows.find((candidate) => candidate.nonTerminal === cellRef.nonTerminal);
+  const cell = row.cells.find((candidate) => candidate.column === cellRef.column);
+  return app.grammar.productions.find((production) => production.number === cell.number);
+}
+
+function derivationLine(form, sign, number) {
+  const item = el('li');
+  const formNode = el('span', 'form');
+  const next = form.findIndex((symbol) => app.nonTerminals.has(symbol));
+  form.forEach((symbol, index) => {
+    if (index > 0) formNode.append(el('span', 'sym-gap', ' '));
+    const node = symbolNode(symbol);
+    if (index === next) node.classList.add('next-nt');
+    formNode.append(node);
+  });
+  item.append(el('span', 'step-sign', sign), formNode);
+  if (number) item.append(el('span', 'prod-number', String(number)));
+  return item;
+}
+
+// A predictive parser always expands the leftmost non-terminal, so the
+// productions it applies, in order, are exactly the leftmost derivation.
+function renderDerivation() {
+  const result = JSON.parse(globalThis.ll1.parse(DERIVATION_SAMPLE));
+  const applied = (result.steps || []).filter((step) => step.cell).map((step) => productionAt(step.cell));
+  const list = $('derivation');
+  let form = [app.grammar.start];
+  list.append(derivationLine(form, '', 0));
+  for (const production of applied) {
+    const index = form.findIndex((symbol) => app.nonTerminals.has(symbol));
+    const body = production.body.filter((symbol) => symbol !== EPSILON);
+    form = [...form.slice(0, index), ...body, ...form.slice(index + 1)];
+    list.append(derivationLine(form, '⇒', production.number));
+  }
 }
 
 function renderSets(rows) {
@@ -90,13 +263,7 @@ function renderSets(rows) {
     tr.append(head);
     for (const set of [row.first, row.follow]) {
       const cell = el('td');
-      cell.append(el('span', 'arrow', '{ '));
-      set.forEach((symbol) => {
-        const item = el('span', 'set-item');
-        item.append(symbolNode(symbol));
-        cell.append(item);
-      });
-      cell.append(el('span', 'arrow', ' }'));
+      cell.append(setNode(set));
       tr.append(cell);
     }
     body.append(tr);
@@ -213,23 +380,34 @@ function stackNode(symbols, highlightTop) {
   return node;
 }
 
-function renderStepRows() {
-  const body = $('steps-table').tBodies[0];
-  body.replaceChildren();
+// Each row is built once per result and reused, so moving through the steps
+// only re-attaches existing rows instead of rebuilding every symbol.
+function stepRow(index) {
+  if (app.rows[index]) return app.rows[index];
   const steps = app.result.steps;
-  const visible = app.mode === MODE.STEP ? app.current + 1 : steps.length;
-  steps.slice(0, visible).forEach((step, index) => {
-    const tr = el('tr');
-    const isLast = index === steps.length - 1;
-    if (isLast) tr.className = app.result.accepted ? 'final-ok' : 'final-bad';
-    if (app.mode === MODE.STEP && index === app.current) tr.classList.add('current');
-    const stackCell = el('td', 'stack-col');
-    stackCell.append(stackNode(step.stack, true));
-    const inputCell = el('td', 'input-col');
-    appendSymbols(inputCell, step.input);
-    tr.append(el('td', 'number', String(step.number)), stackCell, inputCell, el('td', null, arrowText(step.action)));
-    body.append(tr);
-  });
+  const step = steps[index];
+  const tr = el('tr');
+  if (index === steps.length - 1) tr.className = app.result.accepted ? 'final-ok' : 'final-bad';
+  const stackCell = el('td', 'stack-col');
+  stackCell.append(stackNode(step.stack, true));
+  const inputCell = el('td', 'input-col');
+  appendSymbols(inputCell, step.input);
+  tr.append(el('td', 'number', String(step.number)), stackCell, inputCell, el('td', 'action-col', arrowText(step.action)));
+  app.rows[index] = tr;
+  return tr;
+}
+
+function renderStepRows() {
+  const steps = app.result.steps;
+  const stepMode = app.mode === MODE.STEP;
+  const visible = stepMode ? app.current + 1 : steps.length;
+  const rows = [];
+  for (let index = 0; index < visible; index++) {
+    const row = stepRow(index);
+    row.classList.toggle('current', stepMode && index === app.current);
+    rows.push(row);
+  }
+  $('steps-table').tBodies[0].replaceChildren(...rows);
   const scroll = $('steps-scroll');
   if (app.mode === MODE.STEP) scroll.scrollTop = scroll.scrollHeight;
   else scroll.scrollTop = 0;
@@ -282,13 +460,19 @@ function setMode(mode) {
   app.mode = mode;
   if (mode === MODE.STEP) app.current = 0;
   renderAnalysis();
+  // Bring the step controls and the current state into view, not just the button.
+  if (mode === MODE.STEP) $('view-toolbar').scrollIntoView({ block: 'start', behavior: 'smooth' });
 }
 
 function showResult(result) {
   app.result = result;
+  app.rows = [];
   app.current = 0;
   const banner = $('banner');
   banner.className = 'banner ' + (result.accepted ? 'ok' : 'bad');
+  // Reading offsetWidth restarts the entry animation for every new result.
+  void banner.offsetWidth;
+  banner.classList.add('shown');
   $('banner-verdict').textContent = (result.accepted ? '✔ ' : '✘ ') + (result.accepted ? TEXT.accepted : TEXT.rejected);
   $('banner-message').textContent = result.message;
   $('result').hidden = false;
@@ -308,12 +492,13 @@ function analyze() {
 function reset() {
   stopPlaying();
   app.result = null;
+  app.rows = [];
   app.mode = MODE.FULL;
   app.current = 0;
   $('sentence').value = '';
   $('result').hidden = true;
   highlightCell(null);
-  $('sentence').focus();
+  $('sentence').focus({ preventScroll: true });
 }
 
 // ---------- Step navigation ----------
@@ -411,13 +596,17 @@ async function start() {
     const api = globalThis.ll1;
     app.grammar = JSON.parse(api.grammar());
     app.nonTerminals = new Set(app.grammar.nonTerminals);
+    app.table = JSON.parse(api.table());
+    const sets = JSON.parse(api.sets());
     renderGrammar();
-    renderSets(JSON.parse(api.sets()));
-    renderTables(JSON.parse(api.table()));
+    renderSets(sets);
+    renderChecks(sets);
+    renderTables(app.table);
+    renderDerivation();
     wireEvents();
     enableControls();
     $('loading').classList.add('done');
-    $('sentence').focus();
+    $('sentence').focus({ preventScroll: true });
   } catch (error) {
     console.error(error);
     failLoading();
