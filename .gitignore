@@ -1,0 +1,8 @@
+site/
+.claude/
+CLAUDE.md
+AGENTS.md
+steps/
+plans/
+memory/
+graph/

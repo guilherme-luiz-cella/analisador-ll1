@@ -1,0 +1,11 @@
+{
+  "name": "analisador-ll1",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./site",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    { "pattern": "com.cella.website", "custom_domain": true }
+  ]
+}
