@@ -51,7 +51,9 @@ type app struct {
 }
 
 func main() {
-	colors := os.Getenv("NO_COLOR") == "" && prepareConsole()
+	canColor, restore := prepareConsole()
+	defer restore()
+	colors := os.Getenv("NO_COLOR") == "" && canColor
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	run(os.Stdin, os.Stdout, colors, rng)
 }

@@ -140,7 +140,7 @@ func TestTokenizeReportsTheIllegalCharacterAndItsPosition(t *testing.T) {
 
 func TestParserAcceptsValidSentences(t *testing.T) {
 	table := BuildTable(Default())
-	for _, input := range []string{"a", "3", "a+b*c", "(a+b)*c", "((x))", "a-b/c+d*(e-1)"} {
+	for _, input := range []string{"a", "3", "a1", "a+b*c", "(a+b)*c", "((x))", "a-b/c+d*(e-1)"} {
 		result := Parse(table, input)
 		if !result.Accepted {
 			t.Errorf("%q rejected: %s", input, result.Message)
@@ -151,7 +151,7 @@ func TestParserAcceptsValidSentences(t *testing.T) {
 
 func TestParserRejectsInvalidSentences(t *testing.T) {
 	table := BuildTable(Default())
-	for _, input := range []string{"", "+", "a+", "(a", "a)", "a b", "a**b", "()", "a+#"} {
+	for _, input := range []string{"", "+", "1a", "a+", "(a", "a)", "a b", "a**b", "()", "a+#"} {
 		result := Parse(table, input)
 		if result.Accepted {
 			t.Errorf("%q accepted", input)
